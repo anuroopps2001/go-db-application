@@ -131,6 +131,169 @@ Recommended `.gitignore`:
 go-k8s
 ```
 
+# PostgreSQL Environment Variable Setup for Go Application
+
+This document explains how to configure environment variables required for connecting a Go application (using GORM + PostgreSQL) to a PostgreSQL database.
+
+---
+
+## 1. Why Environment Variables?
+
+Environment variables are used to:
+- Avoid hardcoding credentials in source code
+- Support different environments (dev, test, prod)
+- Improve security and portability
+
+In production (VMs, Docker, Kubernetes), **environment variables are the standard approach**.
+
+---
+
+## 2. Required PostgreSQL Environment Variables
+
+The application expects the following variables:
+
+| Variable Name | Description | Example |
+|--------------|------------|---------|
+| `DB_HOST` | PostgreSQL server hostname or IP | `localhost` |
+| `DB_PORT` | PostgreSQL port | `5432` |
+| `DB_USER` | Database username | `postgres` |
+| `DB_PASSWORD` | Database user password | `mypassword` |
+| `DB_NAME` | Database name | `usersdb` |
+| `DB_SSLMODE` | SSL mode for connection | `disable` |
+
+---
+
+## 3. Setting Environment Variables on Linux
+
+### Temporary (Current Shell Only)
+
+```bash
+export DB_HOST=localhost
+export DB_PORT=5432
+export DB_USER=postgres
+export DB_PASSWORD=postgres123
+export DB_NAME=usersdb
+export DB_SSLMODE=disable
+```
+
+Variables are cleared once the shell session ends.
+
+---
+
+### Persistent (User Level)
+
+Add variables to `~/.bashrc` or `~/.bash_profile`:
+
+```bash
+export DB_HOST=localhost
+export DB_PORT=5432
+export DB_USER=postgres
+export DB_PASSWORD=postgres123
+export DB_NAME=usersdb
+export DB_SSLMODE=disable
+```
+
+Apply changes:
+```bash
+source ~/.bashrc
+```
+
+---
+
+## 4. Verifying Environment Variables
+
+```bash
+env | grep DB_
+```
+
+Expected output:
+```text
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=postgres123
+DB_NAME=usersdb
+DB_SSLMODE=disable
+```
+
+---
+
+## 5. Using Environment Variables in Go Code
+
+```go
+dbHost := os.Getenv("DB_HOST")
+dbPort := os.Getenv("DB_PORT")
+dbUser := os.Getenv("DB_USER")
+dbPassword := os.Getenv("DB_PASSWORD")
+dbName := os.Getenv("DB_NAME")
+sslMode := os.Getenv("DB_SSLMODE")
+```
+
+---
+
+## 6. Building the PostgreSQL DSN (Correct Format)
+
+```go
+dsn := fmt.Sprintf(
+  "host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
+  dbHost,
+  dbUser,
+  dbPassword,
+  dbName,
+  dbPort,
+  sslMode,
+)
+```
+
+Incorrect ordering or missing fields will result in authentication or connection errors.
+
+---
+
+## 7. Common Connection Errors and Causes
+
+| Error | Likely Cause |
+|------|-------------|
+| `password authentication failed` | Wrong username/password |
+| `connection refused` | PostgreSQL not running or wrong port |
+| `no such host` | Invalid DB_HOST |
+| `database does not exist` | Wrong DB_NAME |
+| `sslmode required` | SSL misconfiguration |
+
+---
+
+## 8. Security Best Practices
+
+- ❌ Never commit credentials to Git
+- ❌ Never hardcode passwords in Go code
+- ✅ Use environment variables or secrets managers
+- ✅ Use Kubernetes Secrets or Docker secrets in production
+
+---
+
+## 9. Kubernetes Example (Preview)
+
+```yaml
+env:
+  - name: DB_HOST
+    value: postgres-service
+  - name: DB_PORT
+    value: "5432"
+  - name: DB_USER
+    valueFrom:
+      secretKeyRef:
+        name: postgres-secret
+        key: username
+  - name: DB_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: postgres-secret
+        key: password
+  - name: DB_NAME
+    value: usersdb
+  - name: DB_SSLMODE
+    value: disable
+```
+
 ---
 
 ## 12. Gorilla Mux Routing Fix
