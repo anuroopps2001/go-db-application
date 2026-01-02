@@ -17,8 +17,8 @@ services:
 
   go-db-app:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: Docker/Dockerfile
     environment:
       - DB_HOST=postgres-db
       - DB_PASSWORD=mysecretpassword
