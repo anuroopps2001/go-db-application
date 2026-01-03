@@ -12,7 +12,7 @@ spec:
     app: go-db
   type: ClusterIP
   ports:
-  - name: go-db-service
+  - name: http
     protocol: TCP
     port: 8080
     targetPort: 8080 
