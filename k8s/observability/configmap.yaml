@@ -18,6 +18,8 @@ data:
 
       # Kubernetes pods (applications)
       - job_name: "kubernetes-pods"
+        static_configs:
+          - targets: ["localhost:8080]
         kubernetes_sd_configs:
           - role: pod
         relabel_configs:
