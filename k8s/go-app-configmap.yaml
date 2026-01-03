@@ -4,4 +4,4 @@ metadata:
   name: go-app-configmap
   namespace: default
 data:
-  DB_NAME: "mydb"
+  DB_NAME: mydb

@@ -33,7 +33,6 @@ spec:
           - name: postgres-storage  # same as volume name under spec:
             mountPath: /var/lib/postgresql
             subPath: postgres
-        resources: 
         envFrom:
         - configMapRef:
             name: postgres-db-configmap
