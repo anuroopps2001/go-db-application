@@ -5,10 +5,6 @@ metadata:
   namespace: default
   labels:
     app:  go-db
-  annotations:
-    prometheus.io/scrape: "true" # Allowing prometheus to scrape
-    prometheus.io/path: "/metrics" # HTTP path for metricscd 
-    prometheus.io/port: "8080" # Port Prometheus should hit
 spec:
   selector:
     matchLabels:
@@ -23,6 +19,10 @@ spec:
     metadata:
       labels:
         app:  go-db
+      annotations:
+        prometheus.io/scrape: "true" # Allowing prometheus to scrape
+        prometheus.io/path: "/metrics" # HTTP path for metricscd 
+        prometheus.io/port: "8080" # Port Prometheus should hit
     spec:
       # initContainers:
         # Init containers are exactly like regular containers, except:
