@@ -22,3 +22,6 @@ vendor/
 # Env files
 .env
 
+# Github token files
+github-token.token
+
