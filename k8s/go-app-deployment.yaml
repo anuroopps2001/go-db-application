@@ -76,5 +76,7 @@ spec:
               key: DB_PASSWORD
               name: go-app-secret
         ports:
-        - containerPort:  8080
+        - name: http
+          containerPort:  8080
+          protocol: TCP
       restartPolicy: Always
