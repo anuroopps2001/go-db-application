@@ -16,15 +16,15 @@ data:
         static_configs:
           - targets: ["localhost:9090"]
 
-    - job_name: "go-db-app"
-      kubernetes_sd_configs:
-        - role: endpoints
-      relabel_configs:
-        - source_labels: [__meta_kubernetes_service_name]
-          action: keep
-          regex: go-db-service
+      - job_name: "go-db-app"
+        kubernetes_sd_configs:
+          - role: endpoints
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_name]
+            action: keep
+            regex: go-db-service
 
-        - source_labels: [__meta_kubernetes_endpoint_port_name]
-          action: keep
-          regex: http
+          - source_labels: [__meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: http
 
