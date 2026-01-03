@@ -6,62 +6,79 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 func (s *MuxServer) addUser(w http.ResponseWriter, r *http.Request) {
-	var userData Userparam
+	timer := prometheus.NewTimer(httpRequestDuration.WithLabelValues("/user"))
+	defer timer.ObserveDuration()
 
+	var userData Userparam
 	var user User
 
-	json.NewDecoder(r.Body).Decode(&userData)
+	if err := json.NewDecoder(r.Body).Decode(&userData); err != nil {
+		httpRequestsTotal.WithLabelValues("POST", "/user", "400").Inc()
+		http.Error(w, "invalid body", http.StatusBadRequest)
+		return
+	}
 
 	user.Name = userData.Name
-
 	user.Email = userData.Email
-
 	user.Age = userData.Age
 
-	s.db.Create(&user)
+	if err := s.db.Create(&user).Error; err != nil {
+		httpRequestsTotal.WithLabelValues("POST", "/user", "500").Inc()
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
 
-	w.WriteHeader(http.StatusCreated)
-
+	httpRequestsTotal.WithLabelValues("POST", "/user", "201").Inc()
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(user)
-
 }
 
 func (s *MuxServer) listUsers(w http.ResponseWriter, r *http.Request) {
-	var users User
+	timer := prometheus.NewTimer(httpRequestDuration.WithLabelValues("/users"))
+	defer timer.ObserveDuration()
 
-	s.db.Find(&users)
+	var users []User
+	if err := s.db.Find(&users).Error; err != nil {
+		httpRequestsTotal.WithLabelValues("GET", "/users", "500").Inc()
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
 
+	httpRequestsTotal.WithLabelValues("GET", "/users", "200").Inc()
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(users)
 }
 
 func (s *MuxServer) updateUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	timer := prometheus.NewTimer(httpRequestDuration.WithLabelValues("/user/{id}"))
+	defer timer.ObserveDuration()
 
 	var userData Userparam
-	err := json.NewDecoder(r.Body).Decode(&userData)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&userData); err != nil {
+		httpRequestsTotal.WithLabelValues("PUT", "/user/{id}", "400").Inc()
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	vars := mux.Vars(r)
-	userId, err := strconv.Atoi(vars["id"])
+
+	userId, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
+		httpRequestsTotal.WithLabelValues("PUT", "/user/{id}", "400").Inc()
 		http.Error(w, "invalid user id", http.StatusBadRequest)
 		return
 	}
 
 	var user User
 	if err := s.db.First(&user, userId).Error; err != nil {
+		httpRequestsTotal.WithLabelValues("PUT", "/user/{id}", "404").Inc()
 		http.Error(w, "user not found", http.StatusNotFound)
 		return
 	}
 
-	// Partial update
 	if userData.Name != "" {
 		user.Name = userData.Name
 	}
@@ -73,40 +90,38 @@ func (s *MuxServer) updateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.db.Save(&user).Error; err != nil {
+		httpRequestsTotal.WithLabelValues("PUT", "/user/{id}", "500").Inc()
 		http.Error(w, "failed to update user", http.StatusInternalServerError)
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	httpRequestsTotal.WithLabelValues("PUT", "/user/{id}", "200").Inc()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
 		"message": "User updated successfully",
 	})
 }
 
 func (s *MuxServer) deleteUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	timer := prometheus.NewTimer(httpRequestDuration.WithLabelValues("/user/{id}"))
+	defer timer.ObserveDuration()
 
-	vars := mux.Vars(r)
-
-	userId, err := strconv.Atoi(vars["id"])
+	userId, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
+		httpRequestsTotal.WithLabelValues("DELETE", "/user/{id}", "400").Inc()
 		http.Error(w, "invalid user id", http.StatusBadRequest)
 		return
 	}
 
-	var user User
-
-	if err := s.db.First(&user, userId).Error; err != nil {
-		http.Error(w, "user not found", http.StatusNotFound)
-		return
-	}
-
-	if err := s.db.Delete(&user).Error; err != nil {
+	if err := s.db.Delete(&User{}, userId).Error; err != nil {
+		httpRequestsTotal.WithLabelValues("DELETE", "/user/{id}", "500").Inc()
 		http.Error(w, "failed to delete user", http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	httpRequestsTotal.WithLabelValues("DELETE", "/user/{id}", "200").Inc()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
 		"message": "User deleted successfully",
 	})
 }
