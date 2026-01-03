@@ -3,10 +3,6 @@ kind: Deployment
 metadata:
   name: prometheus
   namespace: monitoring
-  annotations:
-    prometheus.io/scrape: "true"
-    prometheus.io/path: "/metrics"
-    prometheus.io/port: "8080"
 spec:
   replicas: 1
   selector:
@@ -16,6 +12,10 @@ spec:
     metadata:
       labels:
         app: prometheus
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8080"
     spec:
       serviceAccountName: prometheus
       containers:
