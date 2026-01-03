@@ -20,31 +20,16 @@ type Client struct {
 }
 
 func (c Client) Ready() bool {
-	var ready string
-	result := c.db.Raw("SELECT 1 as ready").Scan(&ready)
-
-	if result.Error != nil {
-		return false
-	}
-
-	if ready == "1" {
-		return true
-	}
-	return false
+	var ready int
+	result := c.db.Raw("SELECT 1").Scan(&ready)
+	return result.Error == nil && ready == 1
 }
 
 func (c Client) RunMigration() error {
 	if !c.Ready() {
-		log.Fatal("Database is not ready")
+		return fmt.Errorf("database is not ready")
 	}
-
-	err := c.db.AutoMigrate(&User{})
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return c.db.AutoMigrate(&User{})
 }
 
 func NewDBClient() (Client, error) {
@@ -54,21 +39,30 @@ func NewDBClient() (Client, error) {
 	dbName := os.Getenv("DB_NAME")
 	dbPort := os.Getenv("DB_PORT")
 
-	databasePort, err := strconv.Atoi(dbPort)
-
-	if err != nil {
-		log.Fatal("Invalid DB Port.!")
+	// ---- VALIDATION (CRITICAL) ----
+	if dbHost == "" || dbUsername == "" || dbPassword == "" || dbName == "" || dbPort == "" {
+		log.Fatal("One or more required DB environment variables are missing")
 	}
 
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s", dbHost, dbUsername, dbPassword, dbName, databasePort, "disable")
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	databasePort, err := strconv.Atoi(dbPort)
+	if err != nil {
+		log.Fatal("Invalid DB_PORT")
+	}
 
+	log.Printf(
+		"DB CONFIG -> host=%s user=%s db=%s port=%d",
+		dbHost, dbUsername, dbName, databasePort,
+	)
+
+	dsn := fmt.Sprintf(
+		"host=%s user=%s password=%s dbname=%s port=%d sslmode=disable",
+		dbHost, dbUsername, dbPassword, dbName, databasePort,
+	)
+
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		return Client{}, err
 	}
 
-	client := Client{db}
-
-	return client, nil
-
+	return Client{db: db}, nil
 }
