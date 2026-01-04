@@ -21,6 +21,10 @@ curl -LO "https://dl.k8s.io/release/$(curl -Ls https://dl.k8s.io/release/stable.
 sudo install kubectl /usr/local/bin/kubectl
 echo "=== kubectl donwload completed"
 
+echo "=== start minikube ===="
+minikube start --driver=docker
+echo "=== minikube started successfully...!! ===="
+
 echo "=== Adding ubuntu user into docker group ==="
 sudo usermod -aG docker ubuntu
 sudo newgrp docker
@@ -29,8 +33,6 @@ sudo systemctl restart docker
 
 echo "=== added ubuntu user into docker group ==="
 
-echo "=== start minikube ===="
-minikube start --driver=docker
-echo "=== minikube started successfully...!! ===="
+
 
 
