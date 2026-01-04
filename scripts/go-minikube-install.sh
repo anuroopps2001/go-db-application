@@ -22,7 +22,7 @@ sudo install kubectl /usr/local/bin/kubectl
 echo "=== kubectl donwload completed"
 
 echo "=== Adding ubuntu user into docker group ==="
-sudo usemod -aG docker ubuntu
+sudo usermod -aG docker ubuntu
 sudo newgrp docker
 
 sudo systemctl restart docker
