@@ -125,3 +125,29 @@ func (s *MuxServer) deleteUser(w http.ResponseWriter, r *http.Request) {
 		"message": "User deleted successfully",
 	})
 }
+
+// To make sure whether the application process running and able to respond to HTTP requests?
+func (s *MuxServer) health(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}
+
+// To check DB connection works and queries can be executed
+// Since our application is dependent on DB for receiving incoming traffic
+// We make sure app is able to connect to DB successfully before receiving user traffic
+func (s *MuxServer) ready(w http.ResponseWriter, _ *http.Request) {
+	sqlDB, err := s.db.DB()
+
+	if err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
+
+	if err := sqlDB.Ping(); err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ready"))
+}
