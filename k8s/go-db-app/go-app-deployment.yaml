@@ -27,7 +27,7 @@ spec:
       initContainers:
       - name: wait-for-postgres
         image: busybox:1.36 # A lightweight image with basic tools
-        command: ['sh', '-c', 'until nc -z "postgres-db-service 5432; do echo wait-for-postgres; sleep 2; done;']
+        command: ['sh', '-c', 'until nc -z postgres-db-service 5432; do echo wait-for-postgres; sleep 2; done;']
         # # 'postgres-db-service' should be the actual name of your Postgres Service
         # The initContainer runs a script or a command that repeatedly checks for the PostgreSQL service's availability 
         # (e.g., using pg_isready or a simple tcpSocket check). The application container will only start after the initContainer 
