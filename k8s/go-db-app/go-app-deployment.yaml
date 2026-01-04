@@ -55,8 +55,9 @@ spec:
         #     memory: 100Mi
         startupProbe:
           httpGet:
-            path: /health  # sends HTTP GET request to application at /health endpoint
-            port: 8080
+            path: /health  # Endpoint that returns 200 OK after startup
+          failureThreshold: 30 # Allow 30 failures
+          periodSeconds: 10 # Check every 10 seconds (total time allowed: 30 * 10s = 300s)
         livenessProbe:
           httpGet:
             path: /health
@@ -65,6 +66,11 @@ spec:
           httpGet:
             path: /ready
             port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 2
+          failureThreshold: 3
+          sucessThreshold: 1
         env:
         - name: DB_HOST
           value: "postgres-db-service"
