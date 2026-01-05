@@ -11,7 +11,7 @@ pipeline {
             steps {
                 sh '''
                   go version
-                  whoami
+                  whoami || true
                   cat /etc/os-release
                 '''
             }
