@@ -32,6 +32,29 @@ pipeline {
                     go-db-app
                 '''
             }
+        stage('Push Image'){
+            agent any
+            step {
+                 script {
+                    docker.withRegistry('','jenkins-docker-login'){
+                        docker.image("${IMAGE_NAME}:${IMAGE_TAG}").push()
+                        docker.image("${IMAGE_NAME}:latest").push()
+                    }
+                 }
+            }
+        }
+        stage('Deploy to Kubernetest'){
+            agent any
+            steps{
+                sh '''
+                  kubectl set image deployment/go-db-app \
+                  app=${IMAGE_NAME}:${IMAGE_TAG}
+
+                  kubectl rollout status deployment/go-db-app
+                '''
+            }
+        }
+
         }
     }
 }

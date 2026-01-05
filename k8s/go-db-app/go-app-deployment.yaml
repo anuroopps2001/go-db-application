@@ -46,7 +46,7 @@ spec:
       containers:
       - name:  go-db-app-container
         image:  anuroop21/go-db-application:v3
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         #   requests:
         #     cpu: 100m
         #     memory: 100Mi
