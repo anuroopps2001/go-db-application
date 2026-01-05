@@ -2,7 +2,7 @@ pipeline {
     agent none
 
     environment {
-        IMAGE_NAME = 'anuroop21/go-db-app'
+        IMAGE_NAME = 'anuroop21/go-db-application'
         IMAGE_TAG = "${BUILD_NUMBER}"
     }
 
@@ -60,7 +60,7 @@ pipeline {
             steps{
                 sh '''
                   kubectl set image deployment/go-db-app \
-                  app=${IMAGE_NAME}:${IMAGE_TAG}
+                  go-db-app-container=${IMAGE_NAME}:${IMAGE_TAG}
 
                   kubectl rollout status deployment/go-db-app
                 '''
