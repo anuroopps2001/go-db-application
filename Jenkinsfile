@@ -17,7 +17,7 @@ pipeline {
         stage('Go Build & Test (Docker)') {
             steps {
                 script {
-                    docker.image('golang:1.24.11-alpine3.23').inside('-e GOCACHE=/tmp/go-cache') {
+                    docker.image('golang:1.25.5-alpine3.23').inside('-e GOCACHE=/tmp/go-cache') {
     sh '''
       cd go-db-app
       go version
