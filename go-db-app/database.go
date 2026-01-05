@@ -20,15 +20,9 @@ type Client struct {
 }
 
 func (c Client) Ready() bool {
-	var ready string
-	result := c.db.Raw("SELECT 1").Scan(&ready)
-	if result.Error != nil {
-		return false
-	}
-	if ready == "1" {
-		return true
-	}
-	return false
+	var ready int
+	err := c.db.Raw("SELECT 1").Row().Scan(&ready)
+	return err == nil && ready == 1
 }
 
 func (c Client) RunMigration() error {
@@ -52,7 +46,7 @@ func NewDBClient() (Client, error) {
 
 	// ---- VALIDATION (CRITICAL) ----
 	if dbHost == "" || dbUsername == "" || dbPassword == "" || dbName == "" || dbPort == "" {
-		log.Fatal("One or more required DB environment variables are missing")
+		return Client{}, fmt.Errorf("one or more required DB environment variables are missing")
 	}
 
 	databasePort, err := strconv.Atoi(dbPort)
