@@ -34,7 +34,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: ./go-db-app
-        file: ./docker/Dockerfile
+        file: ./Docker/Dockerfile
         push: true
         tags: |
           anuroop21/go-db-app:v3
