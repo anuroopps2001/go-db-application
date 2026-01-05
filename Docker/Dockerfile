@@ -1,8 +1,8 @@
-FROM golang:1.24-alpine AS builder
+FROM golang:1.22-alpine AS builder
 
 ENV CGO_ENABLED=0 \
-GOOS=linux \
-GOARCH=amd64
+    GOOS=linux \
+    GOARCH=amd64
 
 
 # Set working directory inside the container
@@ -22,7 +22,7 @@ COPY . .
 
 RUN go build -o app
 
-FROM alpine:3.21 AS final
+FROM alpine:3.21 
 
 WORKDIR /app
 
