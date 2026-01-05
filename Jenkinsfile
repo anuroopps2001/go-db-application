@@ -45,7 +45,7 @@ pipeline {
                  }
             }
         }
-        
+
         stage('Deploy to Kubernetest'){
             agent any
             steps{
@@ -60,4 +60,3 @@ pipeline {
 
         }
     }
-}
