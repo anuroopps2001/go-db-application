@@ -20,16 +20,27 @@ type Client struct {
 }
 
 func (c Client) Ready() bool {
-	var ready int
+	var ready string
 	result := c.db.Raw("SELECT 1").Scan(&ready)
-	return result.Error == nil && ready == 1
+	if result.Error != nil {
+		return false
+	}
+	if ready == "1" {
+		return true
+	}
+	return false
 }
 
 func (c Client) RunMigration() error {
 	if !c.Ready() {
 		return fmt.Errorf("database is not ready")
 	}
-	return c.db.AutoMigrate(&User{})
+	err := c.db.AutoMigrate(&User{})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func NewDBClient() (Client, error) {
@@ -64,5 +75,6 @@ func NewDBClient() (Client, error) {
 		return Client{}, err
 	}
 
-	return Client{db: db}, nil
+	client := Client{db}
+	return client, nil
 }
