@@ -45,7 +45,7 @@ spec:
           # - Each init container must complete successfully before the next one starts.
       containers:
       - name:  go-db-app-container
-        image:  anuroop21/go-db-application:v2
+        image:  anuroop21/go-db-application:v3
         imagePullPolicy: IfNotPresent
         #   requests:
         #     cpu: 100m
