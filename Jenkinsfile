@@ -7,6 +7,21 @@ pipeline {
     }
 
     stages {
+        stage('Clean Workspace'){
+            agent any{
+                steps {
+                    cleanWS()
+                }
+            }
+        }
+
+        stage('Checkout'){
+            agent any{
+                steps{
+                    Checkout scm
+                }
+            }
+        }
 
         stage('Go Build & Test') {
             agent {
