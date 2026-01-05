@@ -25,14 +25,11 @@ func (c Client) Ready() bool {
 	return result.Error == nil && ready == 1
 }
 
-func (c Client) RunMigration() bool {
-	var ready int
-	err := c.db.Raw("SELECT 1").Row().Scan(&ready)
-	return err == nil && ready == 1
-	/* if !c.Ready() {
+func (c Client) RunMigration() error {
+	if !c.Ready() {
 		return fmt.Errorf("database is not ready")
 	}
-	return c.db.AutoMigrate(&User{}) */
+	return c.db.AutoMigrate(&User{})
 }
 
 func NewDBClient() (Client, error) {
