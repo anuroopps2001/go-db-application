@@ -32,6 +32,8 @@ pipeline {
                     go-db-app
                 '''
             }
+        }
+
         stage('Push Image'){
             agent any
             step {
@@ -43,6 +45,7 @@ pipeline {
                  }
             }
         }
+        
         stage('Deploy to Kubernetest'){
             agent any
             steps{
