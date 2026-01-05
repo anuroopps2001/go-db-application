@@ -16,7 +16,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.22'
+        go-version: '1.24'
         cache-dependency-path: go-db-app/go.sum
 
     - name: Run tests
@@ -37,5 +37,5 @@ jobs:
         file: ./Docker/Dockerfile
         push: true
         tags: |
-          anuroop21/go-db-app:v3
+          anuroop21/go-db-app:v4
           anuroop21/go-db-app:${{ github.sha }}
