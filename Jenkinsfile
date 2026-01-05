@@ -36,7 +36,7 @@ pipeline {
 
         stage('Push Image'){
             agent any
-            step {
+            steps {
                  script {
                     docker.withRegistry('','jenkins-docker-login'){
                         docker.image("${IMAGE_NAME}:${IMAGE_TAG}").push()
