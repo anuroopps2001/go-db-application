@@ -9,7 +9,8 @@ GOARCH=amd64
 WORKDIR /app
 
 # Copy go.mod and go.sum files for dependency installation into workdir
-COPY ../go.mod ../go.sum ./
+COPY go.mod go.sum ./  
+# Based on the build context for github actions, build context has been modified
 
 
 # To download dependencies required to run go application
@@ -17,7 +18,7 @@ RUN go mod download
 
 
 # Copy the entire application source
-COPY ../. .
+COPY . .
 
 RUN go build -o app
 

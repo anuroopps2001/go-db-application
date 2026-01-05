@@ -53,26 +53,28 @@ spec:
         #   limits:
         #     cpu: 100m
         #     memory: 100Mi
-        startupProbe:
-          httpGet:
-            path: /health  # Endpoint that returns 200 OK after startup
+        startupProbe: # Startup probe solves slow-starting apps
+          httpGet:   # If start probe fails, kubelet will kill the container and restarts and after multiple failures,
+          # pod will go into crashloopbackoff error
+            path: /healthz  # Endpoint that returns 200 OK after startup
+            port: 8080  # The pod is crashing because it starts up then immediately exits, thus Kubernetes restarts and the cycle continues.
           failureThreshold: 30 # Allow 30 failures
           periodSeconds: 10 # Check every 10 seconds (total time allowed: 30 * 10s = 300s)
-        livenessProbe:
+        readinessProbe:  # If readinessprobe fails, Pod is marked NotReady i,e Running   0/1   Ready
           httpGet:
-            path: /health
-            port: 8080
-          periodSeconds: 20
-          failureThreshold: 3
-        readinessProbe:
-          httpGet:
-            path: /ready
+            path: /read  # Pod is removed from Service endpoints and no traffic reach the pod
             port: 8080
           initialDelaySeconds: 5
           periodSeconds: 10
           timeoutSeconds: 2
           failureThreshold: 3
           successThreshold: 1
+        livenessProbe:  # Restart after app was running
+          httpGet: # pod still receive the traffic but Container gets killed mid-request and Clients see 5xx / connection resets
+            path: /health
+            port: 8080
+          periodSeconds: 20 # livenessProbe runs every periodSeconds
+          failureThreshold: 3  # for failure, kubelet increments failure count
         env:
         - name: DB_HOST
           value: "postgres-db-service"
