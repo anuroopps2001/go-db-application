@@ -1,6 +1,11 @@
 pipeline {
     agent none
 
+    environment {
+        IMAGE_NAME = 'anuroop21/go-db-app'
+        IMAGE_TAG = "${BUILD_NUMBER}"
+    }
+
     stages {
 
         stage('Go Build & Test') {
@@ -28,7 +33,7 @@ pipeline {
                   docker version
                   docker build \
                     -f Docker/Dockerfile \
-                    -t go-db-app:${BUILD_NUMBER} \
+                    -t $IMAGE_NAME:$IMAGE_TAG \
                     go-db-app
                 '''
             }
@@ -38,9 +43,13 @@ pipeline {
             agent any
             steps {
                  script {
-                    docker.withRegistry('','jenkins-docker-login'){
+                    docker.withRegistry(
+                        'https://index.docker.io/v1/',
+                        'jenkins-docker-login'
+                        )
+                        {
                         docker.image("${IMAGE_NAME}:${IMAGE_TAG}").push()
-                        docker.image("${IMAGE_NAME}:latest").push()
+                        docker.image("${IMAGE_NAME}:${IMAGE_TAG}").push('latest')
                     }
                  }
             }
