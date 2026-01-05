@@ -27,7 +27,7 @@ pipeline {
                 sh '''
                   docker version
                   docker build \
-                    -f docker/docker/Dockerfile \
+                    -f docker/Dockerfile \
                     -t go-db-app:${BUILD_NUMBER} \
                     go-db-app
                 '''
