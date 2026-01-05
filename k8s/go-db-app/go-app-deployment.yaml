@@ -72,7 +72,7 @@ spec:
           periodSeconds: 10
           timeoutSeconds: 2
           failureThreshold: 3
-          sucessThreshold: 1
+          successThreshold: 1
         env:
         - name: DB_HOST
           value: "postgres-db-service"
