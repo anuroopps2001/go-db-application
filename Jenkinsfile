@@ -17,15 +17,16 @@ pipeline {
         stage('Go Build & Test (Docker)') {
             steps {
                 script {
-                    docker.image('golang:1.24-alpine').inside {
-                        sh '''
-                          cd go-db-app
-                          go version
-                          go mod download
-                          go test ./...
-                          go build -o app
-                        '''
-                    }
+                    docker.image('golang:1.24-alpine').inside('-e GOCACHE=/tmp/go-cache') {
+    sh '''
+      cd go-db-app
+      go version
+      go env GOCACHE
+      go mod download
+      go test ./...
+      go build -o app
+    '''
+}
                 }
             }
         }
