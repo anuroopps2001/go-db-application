@@ -24,7 +24,7 @@ services:
 
   go-db-app:
     build:
-      context: ../go-application
+      context: ..
       dockerfile: Docker/Dockerfile
     environment:
       - DB_HOST=postgres-db
