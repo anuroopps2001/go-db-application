@@ -75,29 +75,41 @@ pipeline {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig-jenkins', variable: 'KUBECONFIG')]){
                     sh '''
-                      kubectl -n default set image deployment/go-db-app \
-                        go-db-app-container=${IMAGE_NAME}:${IMAGE_TAG}
-                      kubectl -n default rollout status deployment/go-db-app
+                      echo "======================="
+                      echo "Starting kubernetes deployment"
+                      echo "======================="
 
-                       
-                      kubectl -n default annotate deployment/go-db-app \
-                        kubernetes.io/change-cause="Deploy ${IMAGE_NAME}:${IMAGE_TAG} (Jenkins build ${BUILD_NUMBER})" \
-                        --overwrite
+                      set -x   # To print every command
+                      set +e  # Never exit early automatically
 
-                      echo "Waiting for rollout to complete..."
-                      
-                      # set -e means exit immediately on any non-zero command
-                      
-                      kubectl -n default rollout status deployment/go-db-app --timeout=120s
-                      ROLLOUT_STATUS=$?
+                      NAMESPACE=default
+                      DEPLOYMENT=go-db-app
+                      CONTAINER=go-db-app-container
+                      IMAGE="${IMAGE_NAME:${IMAGE_TAG}"
 
-                      if [$ROLLOUT_STATUS -ne 0]; then
-                        echo "Rollout Failed. Rolling Back..!!"
-                        kubectl -n default rollout undo deployment/go-db-app
+                      echo "Step 1: Updating Deployment Image"
+                      kubectl -n $NAMESPACE set image deployment/$DEPLOYMENT \
+                        $CONTAINER=$IMAGE
+                      SET_IMAGE_STATUS=$?
+
+                      if [ $SET_IMAGE_STATUS -ne 0 ]; then
+                        echo "Failed to set image, exiting.."
                         exit 1
                       fi
 
-                      echo "Deployment Successful..!!"
+                      echo "Step 2: Waiting for rollout to complete"
+                      kubectl -n $NAMESPACE rollout status deployment/$DEPLOYMENT --timeout=120s
+                      ROLLOUT_STATUS=$?
+
+                      if [ $ROLLOUT_STATUS -ne 0 ]; then
+                        echo "Rollout Failed, Initiating rollback...!!"
+                        kubectl -n $NAMESPACE rollout undo deployment/$DEPLOYMENT 
+                        echo "Rollback Triggered"
+                        exit 1
+                      fi
+
+                      echo "Deployment completed successfully..!"
+                      exit 0 
                     '''
                 }
             }
