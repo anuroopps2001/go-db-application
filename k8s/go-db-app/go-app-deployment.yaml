@@ -11,7 +11,7 @@ spec:
   selector:
     matchLabels:
       app: go-db
-  replicas: 1
+  replicas: 2
   progressDeadlineSeconds: 60 # Kubernetest waits until progressDeadlineSeconds is exceeded, before rolling back to previous revisions and CI process, it should be as low as possible
   strategy:
     rollingUpdate:
