@@ -49,7 +49,7 @@ pipeline {
                   docker build \
                     -f Docker/Dockerfile \
                     -t $IMAGE_NAME:$IMAGE_TAG \
-                    go-application
+                    ../go-application
                 '''
             }
         }
