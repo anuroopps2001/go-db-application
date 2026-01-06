@@ -85,7 +85,7 @@ pipeline {
                       NAMESPACE=default
                       DEPLOYMENT=go-db-app
                       CONTAINER=go-db-app-container
-                      IMAGE="${IMAGE_NAME:${IMAGE_TAG}"
+                      IMAGE="${IMAGE_NAME}:${IMAGE_TAG}"
 
                       echo "Step 1: Updating Deployment Image"
                       kubectl -n $NAMESPACE set image deployment/$DEPLOYMENT \
