@@ -75,10 +75,6 @@ pipeline {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig-jenkins', variable: 'KUBECONFIG')]){
                     sh '''
-                      echo "======================="
-                      echo "Starting kubernetes deployment"
-                      echo "======================="
-
                       set -x   # To print every command
                       set +e  # Never exit early automatically
 
