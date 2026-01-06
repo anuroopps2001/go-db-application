@@ -5,14 +5,10 @@ metadata:
   namespace: default
 rules:
 - apiGroups: ["apps"]
-  resources: ["deployments"]
+  resources: ["deployments", "replicasets"]
   verbs: ["get", "list", "watch", "update", "patch"]  # To allow jenkins to patch deployments
 
 - apiGroups: [""]
-  resources: ["pods"]
+  resources: ["pods", events"]
   verbs: ["get", "list", "watch"]
-
-- apiGroups: [""]
-  resources: ["events"]
-  verbs: ["get", "list"]
 
