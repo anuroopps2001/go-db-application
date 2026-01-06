@@ -75,7 +75,6 @@ pipeline {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig-jenkins', variable: 'KUBECONFIG')]){
                     sh '''
-                      set -e
                       kubectl -n default set image deployment/go-db-app \
                         go-db-app-container=${IMAGE_NAME}:${IMAGE_TAG}
                       kubectl -n default rollout status deployment/go-db-app
@@ -86,11 +85,11 @@ pipeline {
                         --overwrite
 
                       echo "Waiting for rollout to complete..."
-
-                      set +e
+                      
+                      # set -e means exit immediately on any non-zero command
+                      
                       kubectl -n default rollout status deployment/go-db-app --timeout=120s
                       ROLLOUT_STATUS=$?
-                      set -e
 
                       if [$ROLLOUT_STATUS -ne 0]; then
                         echo "Rollout Failed. Rolling Back..!!"
