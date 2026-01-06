@@ -72,15 +72,18 @@ pipeline {
 
         stage('Deploy to Kubernetest'){
             agent any
-            steps{
-                sh '''
-                  kubectl set image deployment/go-db-app \
-                  go-db-app-container=${IMAGE_NAME}:${IMAGE_TAG}
-
-                  kubectl rollout status deployment/go-db-app
-                '''
+            steps {
+                withCredentials([file(credentialsID: 'kubeconfig-minikube', variable: 'KUBECONFIG')]){
+                    sh '''
+                      kubectl get nodes
+                      kubectl set image deployment/go-db-app \
+                        go-db-app-container=${IMAGE_NAME}:${IMAGE_TAG}
+                      kubectl rollout status deployment/go-db-app
+                    '''
+                }
             }
         }
 
         }
     }
+    
