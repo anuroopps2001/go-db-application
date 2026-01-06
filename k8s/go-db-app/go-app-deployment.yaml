@@ -5,6 +5,8 @@ metadata:
   namespace: default
   labels:
     app:  go-db
+  annotations:
+    kubernetes.io/change-cause: "Deploy anuroop21/go-db-application:v12 (Jenkins build 45)"  # This specific annotations lists rollout history value
 spec:
   selector:
     matchLabels:
