@@ -10,7 +10,7 @@ WORKDIR /app
 
 # Copy go.mod and go.sum files for dependency installation into workdir
 COPY . .  
-# Based on the build context for Jenkins, build context has been modified
+# Based on the build context for Jenkins, build context has been modified in Jenkinsfile
 
 
 # To download dependencies required to run go application
