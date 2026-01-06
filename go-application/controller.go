@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
@@ -136,15 +138,18 @@ func (s *MuxServer) health(w http.ResponseWriter, _ *http.Request) {
 // Since our application is dependent on DB for receiving incoming traffic
 // We make sure app is able to connect to DB successfully before receiving user traffic
 func (s *MuxServer) ready(w http.ResponseWriter, _ *http.Request) {
+
 	sqlDB, err := s.db.DB()
 
 	if err != nil {
-		w.WriteHeader(http.StatusServiceUnavailable)
+		http.Error(w, "db handle error", http.StatusServiceUnavailable)
 		return
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
 
-	if err := sqlDB.Ping(); err != nil {
-		w.WriteHeader(http.StatusServiceUnavailable)
+	if err := sqlDB.PingContext(ctx); err != nil {
+		http.Error(w, "db not ready", http.StatusServiceUnavailable)
 		return
 	}
 
