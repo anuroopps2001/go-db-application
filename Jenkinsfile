@@ -73,7 +73,7 @@ pipeline {
         stage('Deploy to Kubernetest'){
             agent any
             steps {
-                withCredentials([file(credentialsID: 'kubeconfig-minikube', variable: 'KUBECONFIG')]){
+                withCredentials([file(credentialsId: 'kubeconfig-minikube', variable: 'KUBECONFIG')]){
                     sh '''
                       kubectl get nodes
                       kubectl set image deployment/go-db-app \
