@@ -73,12 +73,12 @@ pipeline {
         stage('Deploy to Kubernetest'){
             agent any
             steps {
-                withCredentials([file(credentialsId: 'kubeconfig-minikube', variable: 'KUBECONFIG')]){
+                withCredentials([file(credentialsId: 'kubeconfig-jenkins', variable: 'KUBECONFIG')]){
                     sh '''
-                      kubectl get nodes
-                      kubectl set image deployment/go-db-app \
+                      set -e
+                      kubectl -n default set image deployment/go-db-app \
                         go-db-app-container=${IMAGE_NAME}:${IMAGE_TAG}
-                      kubectl rollout status deployment/go-db-app
+                      kubectl -n default rollout status deployment/go-db-app
                     '''
                 }
             }
