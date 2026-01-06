@@ -80,6 +80,10 @@ pipeline {
                         go-db-app-container=${IMAGE_NAME}:${IMAGE_TAG}
                       kubectl -n default rollout status deployment/go-db-app
 
+                      kubectl -n default annotate deployment/go-db-app \
+                        kubernetes.io/change-cause="Deploy ${IMAGE_NAME}:${IMAGE_TAG} (Jenkins build ${BUILD_NUMBER})" \
+                        --overwrite
+
                       echo "Waiting for rollout to complete..."
                       if ! kubectl -n default rollout status deployment/go-db-app --timeout=120s; then
                         echo "Rollout failed. Rolling back..."
