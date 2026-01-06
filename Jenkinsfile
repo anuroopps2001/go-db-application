@@ -79,6 +79,15 @@ pipeline {
                       kubectl -n default set image deployment/go-db-app \
                         go-db-app-container=${IMAGE_NAME}:${IMAGE_TAG}
                       kubectl -n default rollout status deployment/go-db-app
+
+                      echo "Waiting for rollout to complete..."
+                      if ! kubectl -n default rollout status deployment/go-db-app --timeout=120s; then
+                        echo "Rollout failed. Rolling back..."
+                        kubectl -n default rollout undo deployment/go-db-app
+                        exit 1
+                      fi
+
+                      echo "Deployment successful"
                     '''
                 }
             }

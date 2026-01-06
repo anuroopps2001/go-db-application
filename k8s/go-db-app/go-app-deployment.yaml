@@ -47,6 +47,11 @@ spec:
       - name:  go-db-app-container
         image:  anuroop21/go-db-application:v4
         imagePullPolicy: Always
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+             echo "Intentionally crashing app for rollback test"
+             exit 1
         #   requests:
         #     cpu: 100m
         #     memory: 100Mi
