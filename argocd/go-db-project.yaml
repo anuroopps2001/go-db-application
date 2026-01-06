@@ -23,3 +23,5 @@ spec:
       kind: ConfigMap
     - group: ""
       kind: Secret
+    - group: ""
+      kind: PersistentVolumeClaim
