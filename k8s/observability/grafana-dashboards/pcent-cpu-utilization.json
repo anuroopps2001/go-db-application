@@ -1,0 +1,115 @@
+{
+  "id": 1,
+  "type": "timeseries",
+  "title": "New panel",
+  "gridPos": {
+    "x": 0,
+    "y": 0,
+    "h": 8,
+    "w": 12
+  },
+  "fieldConfig": {
+    "defaults": {
+      "custom": {
+        "drawStyle": "line",
+        "lineInterpolation": "smooth",
+        "barAlignment": 0,
+        "barWidthFactor": 0.6,
+        "lineWidth": 2,
+        "fillOpacity": 40,
+        "gradientMode": "opacity",
+        "spanNulls": false,
+        "insertNulls": false,
+        "showPoints": "auto",
+        "showValues": false,
+        "pointSize": 5,
+        "stacking": {
+          "mode": "none",
+          "group": "A"
+        },
+        "axisPlacement": "left",
+        "axisLabel": "%CPU",
+        "axisColorMode": "text",
+        "axisBorderShow": false,
+        "scaleDistribution": {
+          "type": "linear"
+        },
+        "axisCenteredZero": false,
+        "hideFrom": {
+          "tooltip": false,
+          "viz": false,
+          "legend": false
+        },
+        "thresholdsStyle": {
+          "mode": "area"
+        },
+        "axisSoftMax": 100,
+        "axisSoftMin": 0
+      },
+      "color": {
+        "mode": "continuous-GrYlRd",
+        "seriesBy": "last"
+      },
+      "mappings": [],
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "color": "green",
+            "value": null
+          },
+          {
+            "value": 0,
+            "color": "#6ED0E0"
+          },
+          {
+            "value": 60,
+            "color": "#EAB839"
+          },
+          {
+            "value": 80,
+            "color": "#EF843C"
+          }
+        ]
+      },
+      "unit": "percent",
+      "max": 100,
+      "min": 0
+    },
+    "overrides": []
+  },
+  "pluginVersion": "12.3.1",
+  "targets": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "editorMode": "code",
+      "exemplar": false,
+      "expr": "100 * (\r\n  sum(rate(node_cpu_seconds_total{mode!=\"idle\"}[5m]))\r\n/\r\n  sum(machine_cpu_cores)\r\n)",
+      "format": "time_series",
+      "interval": "",
+      "legendFormat": "Cluster CPU",
+      "range": true,
+      "refId": "A"
+    }
+  ],
+  "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+  },
+  "options": {
+    "tooltip": {
+      "mode": "single",
+      "sort": "none",
+      "hideZeros": false
+    },
+    "legend": {
+      "showLegend": true,
+      "displayMode": "list",
+      "placement": "bottom",
+      "calcs": []
+    }
+  }
+}
