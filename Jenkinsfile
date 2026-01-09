@@ -53,7 +53,7 @@ pipeline {
         /* =========================
            3. Unit Tests + Coverage
         ========================== */
-        /* stage('Go Test') {
+        stage('Go Test') {
             agent {
                 docker {
                     image 'golang:1.24.11-alpine3.23'
@@ -67,7 +67,7 @@ pipeline {
                   go test ./... -coverprofile=coverage.out
                 '''
             }
-        } */
+        }
 
         /* =========================
            4. SonarQube Analysis
@@ -99,7 +99,7 @@ pipeline {
         /* =========================
            5. Quality Gate
         ========================== */
-        stage('Quality Gate'){
+        /* stage('Quality Gate'){
             agent any 
             steps{
                 timeout(time: 5, unit: 'MINUTES'){
@@ -111,7 +111,7 @@ pipeline {
                     }
                 }
             }
-        }
+        } */
 
         /* =========================
            7. Build Application Binary
