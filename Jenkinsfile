@@ -40,7 +40,24 @@ pipeline {
                 '''
             }
         }
-
+        stage('SonarQube Ananlysis'){
+            agent {
+                docker {
+                    image 'golang:1.24.11-alpine3.23'
+                    args '-e GOCACHE=/tmp/gocache'
+                }
+            }
+            steps{
+                withSonarQubeEnv = ('My SonarQube Server'){
+                    sh '''
+                      apk add --no-cache openjdk17-jre curl unzip
+                      curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
+                      unzip sonar-scanner.zip
+                      ./sonar-scanner-*/bin/sonar-scanner
+                    '''  
+                }
+            }
+        }
         stage('Docker Build') {
             agent any
             steps {
@@ -70,7 +87,7 @@ pipeline {
             }
         }
 
-        stage('Deploy to Kubernetest'){
+        /* stage('Deploy to Kubernetest'){
             agent any
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig-jenkins', variable: 'KUBECONFIG')]){
@@ -109,11 +126,7 @@ pipeline {
                     '''
                 }
             }
-        }
-
-        stage {
-            
-        }
+        } */
 
         }
     }
