@@ -34,7 +34,7 @@ pipeline {
                 docker {
                     image 'golangci/golangci-lint:latest'
                     args '-e GOCACHE=/tmp/go-cache -e GOMODCACHE=/tmp/go-mod -e GOLANGCI_LINT_CACHE=/tmp/golangci-cache \
-                    -e XDG_CACHE_HOME=/tmp/.cache -e -e HOME=/tmp'
+                    -e XDG_CACHE_HOME=/tmp/.cache -e HOME=/tmp'
                     // Container runs as non-root so, /root or /.cache is not writable
                     // Since, /tmp is guaranteed writable we use that.
                 }
