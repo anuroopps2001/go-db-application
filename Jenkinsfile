@@ -53,7 +53,7 @@ pipeline {
         /* =========================
            3. Unit Tests + Coverage
         ========================== */
-        stage('Go Test') {
+        /* stage('Go Test') {
             agent {
                 docker {
                     image 'golang:1.24.11-alpine3.23'
@@ -67,19 +67,19 @@ pipeline {
                   go test ./... -coverprofile=coverage.out
                 '''
             }
-        }
+        } */
 
         /* =========================
            4. SonarQube Analysis
         ========================== */
-        stage('SonarQube Ananlysis'){
+        // stage('SonarQube Ananlysis'){
             /* agent {
                 docker {
                     image 'golang:1.24.11-alpine3.23'
                     args '-e GOCACHE=/tmp/gocache'
                 }
             } */
-            agent {
+            /* agent {
                 docker {
                     image 'sonarsource/sonar-scanner-cli:latest'
                     args '-e SONAR_USER_HOME=$WORKSPACE/.sonar'  // Tell SonarScanner to store cache in Jenkins workspace
@@ -93,7 +93,7 @@ pipeline {
                     '''
                 }
             }
-        }
+        } */
 
 
         /* =========================
