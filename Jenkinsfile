@@ -47,9 +47,7 @@ pipeline {
                     args '-e GOCACHE=/tmp/gocache'
                 }
             } */
-            agent {
-                any
-            }
+            agent any
             steps{
                 withSonarQubeEnv ('jenkins-sonar'){  // Sonar server name created in Jenkins Server
                     sh 'sonar-scanner'
