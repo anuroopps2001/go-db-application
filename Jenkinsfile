@@ -33,7 +33,7 @@ pipeline {
             steps {
                 sh '''
                   go version
-                  cd go-db-app
+                  cd go-application
                   go mod download
                   go test ./...
                   go build -o app
@@ -55,7 +55,9 @@ pipeline {
             }
             steps{
                 withSonarQubeEnv ('jenkins-sonar'){  // Sonar server name created in Jenkins Server
-                    sh 'sonar-scanner'
+                    sh '''
+                      cd go-application
+                      sonar-scanner'
                 }
             }
         }
