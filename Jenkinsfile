@@ -47,13 +47,26 @@ pipeline {
                     args '-e GOCACHE=/tmp/gocache'
                 }
             } */
-            agent any
+            agent {
+                docker {
+                    image 'sonarsource/sonar-scanner-cli:latest'
+                }
+            }
             steps{
                 withSonarQubeEnv ('jenkins-sonar'){  // Sonar server name created in Jenkins Server
                     sh 'sonar-scanner'
                 }
             }
         }
+        stage{
+            agent any 
+            steps{
+                timeout(time: 5, unit: 'MINUTES'){
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
         stage('Docker Build') {
             agent any
             steps {
