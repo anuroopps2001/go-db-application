@@ -48,13 +48,8 @@ pipeline {
                 }
             }
             steps{
-                withSonarQubeEnv = ('jenkins-sonar'){
-                    sh '''
-                      apk add --no-cache openjdk17-jre curl unzip
-                      curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
-                      unzip sonar-scanner.zip
-                      ./sonar-scanner-*/bin/sonar-scanner
-                    '''  
+                withSonarQubeEnv ('jenkins-sonar'){  // Sonar server name created in Jenkins Server
+                    sh 'sonar-scanner'
                 }
             }
         }
