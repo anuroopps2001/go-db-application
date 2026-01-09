@@ -1,0 +1,12 @@
+1. Checkout
+2. Lint & Static Checks
+3. Unit Tests + Coverage
+4. SonarQube Analysis
+5. Quality Gate
+6. Dependency / Security Scan
+7. Build Application
+8. Docker Image Build
+9. Container Image Scan
+10. Push Image
+11. Deploy (optional / gated)
+12. Notifications (optional)
