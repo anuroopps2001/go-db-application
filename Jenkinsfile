@@ -44,7 +44,7 @@ pipeline {
                   echo "Check for current go mod cache path"
                   go env GOMODCACHE
                   cd go-application
-                  echo "=== Executing golinting ===="
+                  echo "=== Executing golinting to check for skipped error handlings ===="
                   golangci-lint run
                 '''
             }
