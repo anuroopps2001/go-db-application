@@ -28,13 +28,15 @@ pipeline {
             agent {
                 docker {
                     image 'golangci/golangci-lint:latest'
+                    args '-e GOCACHE=/tmp/go-cache -e GOMODCACHE=/tmp/go-mod -e GOLANGCI_LINT_CACHE=/tmp/golangci-cache'
+                    // Container runs as non-root so, /root or /.cache is not writable
+                    // Since, /tmp is guaranteed writable we use that.
                 }
             }
             steps {
                 sh '''
                   cd go-application
                   echo "=== Executing golinting ===="
-                  export GOLANGCI_LINT_CACHE=/tmp/.cache
                   golangci-lint run
                 '''
             }
