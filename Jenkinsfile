@@ -99,8 +99,9 @@ pipeline {
                   docker build \
                     -f Docker/Dockerfile \
                     -t $IMAGE_NAME:$IMAGE_TAG \
-                    ./go-application   // This the context, i,e where application source code is present
+                    ./go-application             
                 '''
+                // ./go-application is an context, i,e where application source code is present
             }
         }
 
