@@ -41,12 +41,12 @@ pipeline {
             }
         }
         stage('SonarQube Ananlysis'){
-            agent {
+            /* agent {
                 docker {
                     image 'golang:1.24.11-alpine3.23'
                     args '-e GOCACHE=/tmp/gocache'
                 }
-            }
+            } */
             steps{
                 withSonarQubeEnv ('jenkins-sonar'){  // Sonar server name created in Jenkins Server
                     sh 'sonar-scanner'
