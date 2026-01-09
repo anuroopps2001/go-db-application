@@ -34,6 +34,7 @@ pipeline {
                 sh '''
                   cd go-application
                   echo "=== Executing golinting ===="
+                  export GOLANGCI_LINT_CACHE=/tmp/.cache
                   golangci-lint run
                 '''
             }
