@@ -54,7 +54,7 @@ func NewDBClient() (Client, error) {
 	dbPort := os.Getenv("DB_PORT")
 	databasePort, err := strconv.Atoi(dbPort)
 	if err != nil {
-		log.Fatal("Invalid DB Port")
+		return Client{}, fmt.Errorf("invalid DB port: %v", err)
 	}
 
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s", dbHost, dbUsername, dbPassword, dbName, databasePort, "disable")
