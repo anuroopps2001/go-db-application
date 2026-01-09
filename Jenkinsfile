@@ -57,7 +57,8 @@ pipeline {
                 withSonarQubeEnv ('jenkins-sonar'){  // Sonar server name created in Jenkins Server
                     sh '''
                       cd go-application
-                      sonar-scanner'
+                      sonar-scanner
+                    '''
                 }
             }
         }
