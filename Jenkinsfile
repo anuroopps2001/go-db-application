@@ -48,7 +48,7 @@ pipeline {
                 }
             }
             steps{
-                withSonarQubeEnv = ('My SonarQube Server'){
+                withSonarQubeEnv = ('jenkins-sonar'){
                     sh '''
                       apk add --no-cache openjdk17-jre curl unzip
                       curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
