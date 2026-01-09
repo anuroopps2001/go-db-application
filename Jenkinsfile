@@ -166,7 +166,7 @@ pipeline {
         }
 
         
-        TRIVY installation on ubuntu
+        // TRIVY installation on ubuntu
        /*  echo "=== Installing trivy binary ==="
                   sudo apt-get install wget gnupg
                   wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
