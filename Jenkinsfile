@@ -23,7 +23,7 @@ pipeline {
             }
         
 
-        stage('Go Build & Test') {
+        stage('Go Test') {
             agent {
                 docker {
                     image 'golang:1.24.11-alpine3.23'
@@ -34,9 +34,7 @@ pipeline {
                 sh '''
                   go version
                   cd go-application
-                  go mod download
                   go test ./... -coverprofile=coverage.out
-                  go build -o app
                 '''
             }
         }
@@ -68,6 +66,23 @@ pipeline {
                 timeout(time: 5, unit: 'MINUTES'){
                     waitForQualityGate abortPipeline: true
                 }
+            }
+        }
+
+
+        stage('Build Go Binary'){
+            agent {
+                docker {
+                    image 'golang:1.24.11-alpine3.23'
+                    args '-e GOCACHE=/tmp/go-cache'
+                }
+            }
+            steps {
+                sh '''
+                  cd go-application
+                  go mod download
+                  go build -o app
+                '''
             }
         }
 
