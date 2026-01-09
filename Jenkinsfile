@@ -7,6 +7,8 @@ pipeline {
         GOCACHE            = '/tmp/go-cache'
         GOMODCACHE         = '/tmp/go-mod'
         GOLANGCI_LINT_CACHE= '/tmp/golangci-cache'
+        XDG_CACHE_HOME     = '/tmp/.cache'
+        HOME               = '/tmp'
     }
 
     stages {
@@ -31,13 +33,16 @@ pipeline {
             agent {
                 docker {
                     image 'golangci/golangci-lint:latest'
-                    args '-e GOCACHE=/tmp/go-cache -e GOMODCACHE=/tmp/go-mod -e GOLANGCI_LINT_CACHE=/tmp/golangci-cache'
+                    args '-e GOCACHE=/tmp/go-cache -e GOMODCACHE=/tmp/go-mod -e GOLANGCI_LINT_CACHE=/tmp/golangci-cache \
+                    -e XDG_CACHE_HOME=/tmp/.cache -e -e HOME=/tmp'
                     // Container runs as non-root so, /root or /.cache is not writable
                     // Since, /tmp is guaranteed writable we use that.
                 }
             }
             steps {
                 sh '''
+                  echo "Check for current go mod cache path"
+                  go env GOMODCACHE
                   cd go-application
                   echo "=== Executing golinting ===="
                   golangci-lint run
