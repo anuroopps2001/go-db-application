@@ -60,15 +60,20 @@ pipeline {
                 }
             }
         }
+
         stage('Quality Gate'){
             agent any 
             steps{
                 timeout(time: 5, unit: 'MINUTES'){
-                    waitForQualityGate abortPipeline: true
+                    script {
+                        def qg = waitForQualityGate() 
+                        if (qg.status != 'OK') {
+                            error "Quality Gate Failed..: ${qg.status}'
+                        }
+                    }
                 }
             }
         }
-
 
         stage('Build Go Binary'){
             agent {
@@ -94,7 +99,7 @@ pipeline {
                   docker build \
                     -f Docker/Dockerfile \
                     -t $IMAGE_NAME:$IMAGE_TAG \
-                    ./go-application
+                    ./go-application   // This the context, i,e where application source code is present
                 '''
             }
         }
