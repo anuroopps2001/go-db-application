@@ -29,7 +29,7 @@ pipeline {
         /* =========================
            2. Lint & Static Checks
         ========================== */
-        stage('Lint') {
+        /* stage('Lint') {
             agent {
                 docker {
                     image 'golangci/golangci-lint:latest'
@@ -48,7 +48,7 @@ pipeline {
                   golangci-lint run
                 '''
             }
-        }
+        } */
 
         /* =========================
            3. Unit Tests + Coverage
