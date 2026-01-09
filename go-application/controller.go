@@ -104,9 +104,11 @@ func (s *MuxServer) updateUser(w http.ResponseWriter, r *http.Request) {
 
 	httpRequestsTotal.WithLabelValues("PUT", "/user/{id}", "200").Inc()
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	if err := json.NewEncoder(w).Encode(map[string]string{
 		"message": "User updated successfully",
-	})
+	}); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func (s *MuxServer) deleteUser(w http.ResponseWriter, r *http.Request) {
@@ -128,9 +130,11 @@ func (s *MuxServer) deleteUser(w http.ResponseWriter, r *http.Request) {
 
 	httpRequestsTotal.WithLabelValues("DELETE", "/user/{id}", "200").Inc()
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	if err := json.NewEncoder(w).Encode(map[string]string{
 		"message": "User deleted successfully",
-	})
+	}); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 // To make sure whether the application process running and able to respond to HTTP requests?
