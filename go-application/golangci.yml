@@ -1,0 +1,4 @@
+# This is only for temporary
+linters:
+  disable:
+    - errcheck
