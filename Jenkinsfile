@@ -35,7 +35,7 @@ pipeline {
                   go version
                   cd go-application
                   go mod download
-                  go test ./...
+                  go test ./... -coverprofile=coverage.out
                   go build -o app
                 '''
             }
