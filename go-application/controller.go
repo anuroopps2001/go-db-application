@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -37,7 +38,9 @@ func (s *MuxServer) addUser(w http.ResponseWriter, r *http.Request) {
 	httpRequestsTotal.WithLabelValues("POST", "/user", "201").Inc()
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(user)
+	if err := json.NewEncoder(w).Encode(user); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func (s *MuxServer) listUsers(w http.ResponseWriter, r *http.Request) {
@@ -53,7 +56,9 @@ func (s *MuxServer) listUsers(w http.ResponseWriter, r *http.Request) {
 
 	httpRequestsTotal.WithLabelValues("GET", "/users", "200").Inc()
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(users)
+	if err := json.NewEncoder(w).Encode(users); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func (s *MuxServer) updateUser(w http.ResponseWriter, r *http.Request) {
@@ -131,7 +136,9 @@ func (s *MuxServer) deleteUser(w http.ResponseWriter, r *http.Request) {
 // To make sure whether the application process running and able to respond to HTTP requests?
 func (s *MuxServer) health(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ok"))
+	if _, err := w.Write([]byte("ok")); err != nil {
+		log.Println("Write failed:", err)
+	}
 }
 
 // To check DB connection works and queries can be executed
@@ -154,5 +161,7 @@ func (s *MuxServer) ready(w http.ResponseWriter, _ *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ready"))
+	if _, err := w.Write([]byte("ready")); err != nil {
+		log.Println("Write failed:", err)
+	}
 }
