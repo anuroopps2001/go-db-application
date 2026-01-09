@@ -50,6 +50,7 @@ pipeline {
             agent {
                 docker {
                     image 'sonarsource/sonar-scanner-cli:latest'
+                    args '-e SONAR_USER_HOME=$WORKSPACE/.sonar'  // Tell SonarScanner to store cache in Jenkins workspace
                 }
             }
             steps{
