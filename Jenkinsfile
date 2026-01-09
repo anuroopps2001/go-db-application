@@ -4,6 +4,9 @@ pipeline {
     environment {
         IMAGE_NAME = 'anuroop21/go-db-application'
         IMAGE_TAG = "${BUILD_NUMBER}"
+        GOCACHE            = '/tmp/go-cache'
+        GOMODCACHE         = '/tmp/go-mod'
+        GOLANGCI_LINT_CACHE= '/tmp/golangci-cache'
     }
 
     stages {
