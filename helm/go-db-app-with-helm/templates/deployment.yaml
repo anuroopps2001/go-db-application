@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    app: {{ .Values.labels.app }}
+  annotations:
+    kubernetes.io/change-cause: "Helm deploy {{ .Values.image.repository }}:{{ .Values.image.tag }}"
+spec:
+  replicas: {{ .Values.replicaCount }}
+  progressDeadlineSeconds: {{ .Values.rollout.progressDeadlineSeconds }}
+  selector:
+    matchLabels:
+      app: {{ .Values.labels.app }}
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: {{ .Values.rollout.strategy.maxSurge }}
+      maxUnavailable: {{ .Values.rollout.strategy.maxUnavailable }}
+
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.labels.app }}
+      annotations:
+        prometheus.io/scrape: "{{ .Values.annotations.prometheus.scrape }}"
+        prometheus.io/path: "{{ .Values.annotations.prometheus.path }}"
+        prometheus.io/port: "{{ .Values.annotations.prometheus.port }}"
+
+    spec:
+
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:17-alpine
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h {{ .Values.postgres.host }} -p {{ .Values.postgres.port }} -U {{ .Values.postgres.user }}; do
+                echo "waiting for postgres-db to be ready.."
+                sleep 3
+              done
+
+      containers:
+        - name: go-db-app-container
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+
+          startupProbe:
+            httpGet:
+              path: {{ default "/healthz" .Values.probes.startup.path }}
+              port: {{ .Values.service.port }}
+            failureThreshold: {{ .Values.probes.startup.failureThreshold }}
+            periodSeconds: {{ .Values.probes.startup.periodSeconds }}
+
+          readinessProbe:
+            httpGet:
+              path: {{ default "/ready" .Values.probes.readiness.path }}
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+
+          livenessProbe:
+            httpGet:
+              path: {{ default "/healthz" .Values.probes.liveness.path }}
+              port: {{ .Values.service.port }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+
+          env:
+            - name: DB_HOST
+              value: "{{ .Values.postgres.host }}"
+
+            - name: DB_PORT
+              value: "{{ .Values.postgres.port }}"
+
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: go-app-configmap
+                  key: DB_NAME
+
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: go-app-secret
+                  key: DB_USERNAME
+
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: go-app-secret
+                  key: DB_PASSWORD
+
+          resources:
+{{- toYaml .Values.resources | nindent 12 }}
+
+      restartPolicy: Always
