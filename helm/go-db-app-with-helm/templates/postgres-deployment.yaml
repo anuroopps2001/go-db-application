@@ -34,14 +34,14 @@ spec:
 
           envFrom: 
           - configMapRef:
-              name: 
+              name: postgres-db-configmap
 
           env:
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.postgresql.credentials.usernameSecret.name }}
-                  value: {{ .Values.postgresql.credentials.usernameSecret.key }}
+                  key: {{ .Values.postgresql.credentials.usernameSecret.key }}
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
