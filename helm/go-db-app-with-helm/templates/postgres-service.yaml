@@ -1,0 +1,10 @@
+apiversion: v1
+kind: Service
+metadata:
+  name: {{ .Values.postgresql.name }}
+spec:
+  selector: 
+    app: {{ .Values.postgresql.name }}
+  ports:
+    - port: {{ .Values.postgresql.service.port }}
+      targetPort: {{ .Values.postgresql.service.port }}

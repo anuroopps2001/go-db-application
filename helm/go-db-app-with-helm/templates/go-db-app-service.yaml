@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Value.name }}
+  annotations:
+    prometheus.io/scrape: "{{ .Values.annotations.prometheus.scrape }}"
+    prometheus.io/path: "{{ .Values.annotations.prometheus.path }}"
+    prometheus.io/port: "{{ .Values.annotations.prometheus.port }}"
+spec:
+  selector:
+    app: {{ .Values.labels.app }}
+  type: ClusterIP
+  ports:
+  - name: http
+    protocol: TCP
+    port: {{ .Values.service.port }}
+    targetPort: {{ .Values.service.port }}
+    # If you set the `spec.type` field to `NodePort` and you want a specific port number,
+    # you can specify a value in the `spec.ports[*].nodePort` field.

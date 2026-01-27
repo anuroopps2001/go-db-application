@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.postgresql.name }}-deployment
+  labels:
+    app: {{ .Values.postgresql.name }}
+spec:
+  replicas: {{ .Values.postgresql.replicas }}
+
+  selector: 
+    matchLabels:
+      app: {{ .Values.postgresql.name }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: {{ .Values.rollout.strategy.maxSurge }}
+      maxUnavailable: {{ .Values.rollout.strategy.maxUnavailable }}
+
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.postgresql.name }}
+    spec:
+      containers:
+        - name: postgres
+          image: {{ .Values.postgresql.image }}
+
+          ports:
+            - containerPort: {{ .Values.postgresql.service.port }}
+          volumeMounts: 
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql
+              subPath: postgres
+
+          envFrom: 
+          - configMapRef:
+              name: {{ .Values.postgresql.configMap.name }}
+
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgresql.credentials.usernameSecret.name }}
+                  value: {{ .Values.postgresql.credentials.usernameSecret.key }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgresql.credentials.passwordSecret.name }}
+                  key: {{ .Values.postgresql.credentials.passwordSecret.key }}
+                
+volumes:
+  - name: postgres-storage
+    persistentVolumeClaim:
+      claimName: {{ .Values.postgresql.storage.pvcName }}

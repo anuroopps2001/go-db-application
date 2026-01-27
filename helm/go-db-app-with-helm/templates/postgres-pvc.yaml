@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: PersistenVolumeClaim
+metadata:
+  name: {{ .Values.postgresql.name }}
+spec:
+  accessMode: 
+    - {{ .Values.postgresql.storage.accessMode }}
+  resources:
+    requests:
+      storage: {{ .Values.postgresql.storage.size }}

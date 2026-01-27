@@ -1,3 +1,4 @@
+# go-db application yaml details
 replicaCount: 1
 
 image:
@@ -53,3 +54,38 @@ probes:
     path: /healthz
     periodSeconds: 20
     failureThreshold: 3
+
+
+# postgres-deployment details
+postgresql:
+
+  name: postgres
+  image: postgres:17-alpine
+  replicas: 1
+  
+  service:
+    name: postgres-db-service
+    port: 5432
+
+  storage:
+    pvcName: postgres-db-pvc
+    size: 5Gi
+    accessMode: ReadWriteOnce
+
+  credentials:
+    usernameSecret:
+      name: postgres-db-secret
+      key: postgres_user
+
+    passwordSecret:
+      name: postgres-db-secret
+      key: postgres_password
+
+  database:
+    name: mydb
+    credentials:
+      username: postgres
+      password: mysecretpassword
+    
+    
+    
