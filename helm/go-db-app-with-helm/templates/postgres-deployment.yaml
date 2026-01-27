@@ -34,7 +34,7 @@ spec:
 
           envFrom: 
           - configMapRef:
-              name: {{ .Values.postgresql.configMap.name }}
+              name: 
 
           env:
             - name: POSTGRES_USER
