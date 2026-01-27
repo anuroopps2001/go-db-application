@@ -1,0 +1,18 @@
+replicaCount: 1
+
+
+image:
+  repository: anuroop21/go-db-application
+  tag: v4
+  pullPolicy: Always
+
+service:
+  type: clusterIP
+  port: 8080
+
+env:
+  DB_HOST: postgres-db-service
+  DB_USERNAME: postgres
+  DB_PASSWORD: mysecretpassword
+  DB_NAME: mydb
+  DB_PORT: 5432
