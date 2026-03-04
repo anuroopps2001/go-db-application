@@ -78,16 +78,16 @@ pipeline {
             steps{
                 withSonarQubeEnv ('jenkins-sonar'){  // Sonar server name created in Jenkins Server
                     sh '''
-                      docker run --rm \
-                        -e SONAR_USER_HOME=/tmp/.sonar \
-                        -e SONAR_HOST_URL="$SONAR_HOST_URL" \
-                        -e SONAR_AUTH_TOKEN="$SONAR_AUTH_TOKEN" \
-                        -v "$PWD:/workspace" \
-                        -w /workspace/go-application \
-                        --network ci-network \
-                        sonarsource/sonar-scanner-cli:latest \
-                        sonar-scanner
-                    '''
+                       docker run --rm \
+                       -e SONAR_USER_HOME=/tmp/.sonar \
+                       -e SONAR_HOST_URL="$SONAR_HOST_URL" \
+                       -e SONAR_AUTH_TOKEN="$SONAR_AUTH_TOKEN" \
+                       -v "$PWD:/workspace" \
+                       -w /workspace/go-application \
+                       --network ci-network \
+                       sonarsource/sonar-scanner-cli:latest \
+                       sonar-scanner
+    '''
                 }
             }
         }
