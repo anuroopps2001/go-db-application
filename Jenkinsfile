@@ -30,22 +30,19 @@ pipeline {
            2. Lint & Static Checks
         ========================== */
         stage('Lint') {
-            agent {
-                docker {
-                    image 'golangci/golangci-lint:latest'
-                    args '-e GOCACHE=/tmp/go-cache -e GOMODCACHE=/tmp/go-mod -e GOLANGCI_LINT_CACHE=/tmp/golangci-cache \
-                    -e XDG_CACHE_HOME=/tmp/.cache -e HOME=/tmp'
-                    // Container runs as non-root so, /root or /.cache is not writable
-                    // Since, /tmp is guaranteed writable we use that.
-                }
-            }
+            agent any
             steps {
                 sh '''
-                  echo "Check for current go mod cache path"
-                  go env GOMODCACHE
-                  cd go-application
-                  echo "=== Executing golinting to check for skipped error handlings ===="
-                  golangci-lint run
+                  docker run --rm \
+                    -e GOCACHE=/tmp/go-cache \
+                    -e GOMODCACHE=/tmp/go-mod \
+                    -e GOLANGCI_LINT_CACHE=/tmp/golangci-cache \
+                    -e XDG_CACHE_HOME=/tmp/.cache \
+                    -e HOME=/tmp \
+                    -v "$PWD:/workspace" \
+                    -w /workspace/go-application \
+                    golangci/golangci-lint:latest \
+                    sh -c 'echo "=== Executing golinting to check for skipped error handlings ====" && golangci-lint run'
                 '''
             }
         }
@@ -54,17 +51,15 @@ pipeline {
            3. Unit Tests + Coverage
         ========================== */
         stage('Go Test') {
-            agent {
-                docker {
-                    image 'golang:1.24.11-alpine3.23'
-                    args '-e GOCACHE=/tmp/go-cache'
-                }
-            }
+            agent any
             steps {
                 sh '''
-                  go version
-                  cd go-application
-                  go test ./... -coverprofile=coverage.out
+                  docker run --rm \
+                    -e GOCACHE=/tmp/go-cache \
+                    -v "$PWD:/workspace" \
+                    -w /workspace/go-application \
+                    golang:1.24.11-alpine3.23 \
+                    sh -c 'go version && go test ./... -coverprofile=coverage.out'
                 '''
             }
         }
@@ -79,17 +74,18 @@ pipeline {
                     args '-e GOCACHE=/tmp/gocache'
                 }
             } */
-            agent {
-                docker {
-                    image 'sonarsource/sonar-scanner-cli:latest'
-                    args '-e SONAR_USER_HOME=$WORKSPACE/.sonar'  // Tell SonarScanner to store cache in Jenkins workspace
-                }
-            }
+            agent any
             steps{
                 withSonarQubeEnv ('jenkins-sonar'){  // Sonar server name created in Jenkins Server
                     sh '''
-                      cd go-application
-                      sonar-scanner
+                      docker run --rm \
+                        -e SONAR_USER_HOME=/workspace/.sonar \
+                        -e SONAR_HOST_URL="$SONAR_HOST_URL" \
+                        -e SONAR_AUTH_TOKEN="$SONAR_AUTH_TOKEN" \
+                        -v "$PWD:/workspace" \
+                        -w /workspace/go-application \
+                        sonarsource/sonar-scanner-cli:latest \
+                        sonar-scanner
                     '''
                 }
             }
@@ -117,17 +113,15 @@ pipeline {
            7. Build Application Binary
         ========================== */
         stage('Build Go Binary'){
-            agent {
-                docker {
-                    image 'golang:1.24.11-alpine3.23'
-                    args '-e GOCACHE=/tmp/go-cache'
-                }
-            }
+            agent any
             steps {
                 sh '''
-                  cd go-application
-                  go mod download
-                  go build -o app
+                  docker run --rm \
+                    -e GOCACHE=/tmp/go-cache \
+                    -v "$PWD:/workspace" \
+                    -w /workspace/go-application \
+                    golang:1.24.11-alpine3.23 \
+                    sh -c 'go mod download && go build -o app'
                 '''
             }
         }
@@ -151,15 +145,14 @@ pipeline {
         }
 
         stage('Container Scan') {
-            agent {
-                docker {
-                    image 'aquasec/trivy:latest'
-                }
-            }
+            agent any
             steps {
                 sh '''
                   echo "=== Starting container scanning ==="
-                  trivy image --exit-code-1 --severity CRITICAL,HIGH $IMAGE_NAME:$IMAGE_TAG
+                  docker run --rm \
+                    -v /var/run/docker.sock:/var/run/docker.sock \
+                    aquasec/trivy:latest \
+                    image --exit-code 1 --severity CRITICAL,HIGH $IMAGE_NAME:$IMAGE_TAG
                   echo "=== Scanning completed ==="
                 '''
             }
@@ -241,7 +234,7 @@ pipeline {
             agent any 
             steps {
                 withCredentials([usernamePassword(
-                    credentialsID: 'gitops-credentials',
+                    credentialsId: 'gitops-credentials',
                     usernameVariable: 'GIT_USER',
                     passwordVariable: 'GIT_PASS'
                 )]){
