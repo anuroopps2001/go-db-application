@@ -159,7 +159,7 @@ pipeline {
             steps {
                 sh '''
                   echo "=== Starting container scanning ==="
-                  trivy image --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL $IMAGE_NAME:$IMAGE_TAG
+                  trivy image --exit-code-1 --severity CRITICAL,HIGH $IMAGE_NAME:$IMAGE_TAG
                   echo "=== Scanning completed ==="
                 '''
             }
@@ -237,11 +237,29 @@ pipeline {
                 }
             }
         } */
+        stage ('Update git repo'){
+            agent any 
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsID: 'gitops-credentials',
+                    usernameVariable: 'GIT_USER',
+                    passwordVariable: 'GIT_PASS'
+                )]){
+                    sh '''
+                    git clone https://$GIT_USER:$GIT_PASS@github.com:anuroopps2001/go-db-application.git
+                    cd go-db-application/k8s/go-db-app
+                    sed -i "s|image:.*|image: anuroop21/go-db-application/k8s/go-db-app:${BUILD_NUMBER}|g" go-app-deployment.yaml.yaml
+                    git config user.email "jenkins@ci"
+                    git config user.name "jenkins"
 
+                    git add .
+                    git commit -m "updated image to ${BUILD_NUMBER}"
+                    git push
+                '''
+                }
+            }
         }
     }
-    
-
     /* =========================
        12. Notifications (Optional)
     ========================== */
