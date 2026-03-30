@@ -135,6 +135,27 @@ func (s *MuxServer) deleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *MuxServer) getUser(w http.ResponseWriter, r *http.Request) {
+
+	userId, err := strconv.Atoi(mux.Vars(r)["id"])
+	if err != nil {
+		http.Error(w, "invalid user id", http.StatusBadRequest)
+		return
+	}
+
+	var user User
+
+	if err := s.db.First(&user, userId).Error; err != nil {
+		http.Error(w, "user not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(user); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 // Health check (liveness probe)
 func (s *MuxServer) health(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
