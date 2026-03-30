@@ -52,7 +52,6 @@ jobs:
 
       - run:
           name: Lint Dockerfile
-          working_directory: go-application
           command: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 - < Docker/Dockerfile
 
       - run:
