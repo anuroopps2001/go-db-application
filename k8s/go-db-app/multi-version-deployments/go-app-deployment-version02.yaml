@@ -1,11 +1,11 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name:  go-db-app-version01
+  name:  go-db-app-version02
   namespace: default
   labels:
     app:  go-db
-    version: "01"
+    version: "02"
   annotations:
     kubernetes.io/change-cause: "Deploy anuroop21/go-db-application:v12 (Jenkins build 45)"  # This specific annotations lists rollout history value
 spec:
@@ -23,7 +23,7 @@ spec:
     metadata:
       labels:
         app:  go-db
-        version: "01" 
+        version: "02"
       annotations:
         prometheus.io/scrape: "true" # Allowing prometheus to scrape
         prometheus.io/path: "/metrics" # HTTP path for metricscd 
@@ -50,7 +50,7 @@ spec:
           # - Each init container must complete successfully before the next one starts.
       containers:
       - name:  go-db-app-container
-        image:  anuroop21/go-app-circleci:latest
+        image:  anuroop21/go-app-circleci:bcd1d11f2e6693d25d1d0efde5413acf13071b94
         imagePullPolicy: Always
         # command: ["/bin/bash", "-c"]    # This was test rollback from Jenkins in case of deployment failures
         # args:
