@@ -6,21 +6,19 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
+// Create User
 func (s *MuxServer) addUser(w http.ResponseWriter, r *http.Request) {
-	timer := prometheus.NewTimer(httpRequestDuration.WithLabelValues("/user"))
-	defer timer.ObserveDuration()
 
 	var userData Userparam
 	var user User
 
 	if err := json.NewDecoder(r.Body).Decode(&userData); err != nil {
-		httpRequestsTotal.WithLabelValues("POST", "/user", "400").Inc()
 		http.Error(w, "invalid body", http.StatusBadRequest)
 		return
 	}
@@ -30,58 +28,62 @@ func (s *MuxServer) addUser(w http.ResponseWriter, r *http.Request) {
 	user.Age = userData.Age
 
 	if err := s.db.Create(&user).Error; err != nil {
-		httpRequestsTotal.WithLabelValues("POST", "/user", "500").Inc()
+
+		// Handle duplicate email error (unique constraint)
+		if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "unique") {
+			http.Error(w, "email already exists", http.StatusConflict)
+			return
+		}
+
+		// Other DB errors
 		http.Error(w, "db error", http.StatusInternalServerError)
 		return
 	}
 
-	httpRequestsTotal.WithLabelValues("POST", "/user", "201").Inc()
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
+
 	if err := json.NewEncoder(w).Encode(user); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
+// List Users
 func (s *MuxServer) listUsers(w http.ResponseWriter, r *http.Request) {
-	timer := prometheus.NewTimer(httpRequestDuration.WithLabelValues("/users"))
-	defer timer.ObserveDuration()
 
 	var users []User
+
 	if err := s.db.Find(&users).Error; err != nil {
-		httpRequestsTotal.WithLabelValues("GET", "/users", "500").Inc()
 		http.Error(w, "db error", http.StatusInternalServerError)
 		return
 	}
 
-	httpRequestsTotal.WithLabelValues("GET", "/users", "200").Inc()
 	w.Header().Set("Content-Type", "application/json")
+
 	if err := json.NewEncoder(w).Encode(users); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
+// Update User
 func (s *MuxServer) updateUser(w http.ResponseWriter, r *http.Request) {
-	timer := prometheus.NewTimer(httpRequestDuration.WithLabelValues("/user/{id}"))
-	defer timer.ObserveDuration()
 
 	var userData Userparam
+
 	if err := json.NewDecoder(r.Body).Decode(&userData); err != nil {
-		httpRequestsTotal.WithLabelValues("PUT", "/user/{id}", "400").Inc()
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	userId, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
-		httpRequestsTotal.WithLabelValues("PUT", "/user/{id}", "400").Inc()
 		http.Error(w, "invalid user id", http.StatusBadRequest)
 		return
 	}
 
 	var user User
+
 	if err := s.db.First(&user, userId).Error; err != nil {
-		httpRequestsTotal.WithLabelValues("PUT", "/user/{id}", "404").Inc()
 		http.Error(w, "user not found", http.StatusNotFound)
 		return
 	}
@@ -97,13 +99,12 @@ func (s *MuxServer) updateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.db.Save(&user).Error; err != nil {
-		httpRequestsTotal.WithLabelValues("PUT", "/user/{id}", "500").Inc()
 		http.Error(w, "failed to update user", http.StatusInternalServerError)
 		return
 	}
 
-	httpRequestsTotal.WithLabelValues("PUT", "/user/{id}", "200").Inc()
 	w.Header().Set("Content-Type", "application/json")
+
 	if err := json.NewEncoder(w).Encode(map[string]string{
 		"message": "User updated successfully",
 	}); err != nil {
@@ -111,25 +112,22 @@ func (s *MuxServer) updateUser(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Delete User
 func (s *MuxServer) deleteUser(w http.ResponseWriter, r *http.Request) {
-	timer := prometheus.NewTimer(httpRequestDuration.WithLabelValues("/user/{id}"))
-	defer timer.ObserveDuration()
 
 	userId, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
-		httpRequestsTotal.WithLabelValues("DELETE", "/user/{id}", "400").Inc()
 		http.Error(w, "invalid user id", http.StatusBadRequest)
 		return
 	}
 
 	if err := s.db.Delete(&User{}, userId).Error; err != nil {
-		httpRequestsTotal.WithLabelValues("DELETE", "/user/{id}", "500").Inc()
 		http.Error(w, "failed to delete user", http.StatusInternalServerError)
 		return
 	}
 
-	httpRequestsTotal.WithLabelValues("DELETE", "/user/{id}", "200").Inc()
 	w.Header().Set("Content-Type", "application/json")
+
 	if err := json.NewEncoder(w).Encode(map[string]string{
 		"message": "User deleted successfully",
 	}); err != nil {
@@ -137,25 +135,45 @@ func (s *MuxServer) deleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// To make sure whether the application process running and able to respond to HTTP requests?
+func (s *MuxServer) getUser(w http.ResponseWriter, r *http.Request) {
+
+	userId, err := strconv.Atoi(mux.Vars(r)["id"])
+	if err != nil {
+		http.Error(w, "invalid user id", http.StatusBadRequest)
+		return
+	}
+
+	var user User
+
+	if err := s.db.First(&user, userId).Error; err != nil {
+		http.Error(w, "user not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(user); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+// Health check (liveness probe)
 func (s *MuxServer) health(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
+
 	if _, err := w.Write([]byte("ok")); err != nil {
 		log.Println("Write failed:", err)
 	}
 }
 
-// To check DB connection works and queries can be executed
-// Since our application is dependent on DB for receiving incoming traffic
-// We make sure app is able to connect to DB successfully before receiving user traffic
+// Readiness check (DB connectivity)
 func (s *MuxServer) ready(w http.ResponseWriter, _ *http.Request) {
 
 	sqlDB, err := s.db.DB()
-
 	if err != nil {
 		http.Error(w, "db handle error", http.StatusServiceUnavailable)
 		return
 	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
@@ -165,6 +183,7 @@ func (s *MuxServer) ready(w http.ResponseWriter, _ *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+
 	if _, err := w.Write([]byte("ready")); err != nil {
 		log.Println("Write failed:", err)
 	}
