@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -27,6 +28,14 @@ func (s *MuxServer) addUser(w http.ResponseWriter, r *http.Request) {
 	user.Age = userData.Age
 
 	if err := s.db.Create(&user).Error; err != nil {
+
+		// Handle duplicate email error (unique constraint)
+		if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "unique") {
+			http.Error(w, "email already exists", http.StatusConflict)
+			return
+		}
+
+		// Other DB errors
 		http.Error(w, "db error", http.StatusInternalServerError)
 		return
 	}
