@@ -58,7 +58,7 @@ jobs:
           name: Build the Docker image
           command: |
             TAG="${CIRCLE_BUILD_NUM}"
-            docker build -f Docker/Dockerfile -t $DOCKERHUB_USER/go-app:${CIRCLE_SHA1} .
+            docker build -f Docker/Dockerfile -t $DOCKERHUB_USER/go-app-circleci:${CIRCLE_SHA1} .
 
       - run:
           name: Install Trivy
@@ -68,7 +68,7 @@ jobs:
       - run:
           name: Scan Docker image
           command: |
-            ./bin/trivy image --severity HIGH,CRITICAL --ignore-unfixed $DOCKERHUB_USER/go-app:${CIRCLE_SHA1}
+            ./bin/trivy image --severity HIGH,CRITICAL --ignore-unfixed $DOCKERHUB_USER/go-app-circleci:${CIRCLE_SHA1}
 
       - run:
           name: Login to DockerHub
@@ -78,9 +78,9 @@ jobs:
       - run:
           name: Push docker image
           command: |
-            docker push $DOCKERHUB_USER/go-app:${CIRCLE_SHA1}
-            docker tag $DOCKERHUB_USER/go-app:${CIRCLE_SHA1} $DOCKERHUB_USER/go-app-circleci:latest
-            docker push $DOCKERHUB_USER/go-app:latest
+            docker push $DOCKERHUB_USER/go-app-circleci:${CIRCLE_SHA1}
+            docker tag $DOCKERHUB_USER/go-app-circleci:${CIRCLE_SHA1} $DOCKERHUB_USER/go-app-circleci:latest
+            docker push $DOCKERHUB_USER/go-app-circleci:latest
   
 workflows:
   version: 2
