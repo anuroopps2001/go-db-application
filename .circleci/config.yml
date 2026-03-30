@@ -58,7 +58,7 @@ jobs:
           name: Build the Docker image
           command: |
             TAG="${CIRCLE_BUILD_NUM}"
-            docker build -f ../Docker/Dockerfile -t $DOCKERHUB_USER/go-app:${CIRCLE_SHA1} .
+            docker build -f Docker/Dockerfile -t $DOCKERHUB_USER/go-app:${CIRCLE_SHA1} .
 
       - run:
           name: Install Trivy
