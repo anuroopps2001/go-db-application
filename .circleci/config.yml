@@ -23,8 +23,7 @@ jobs:
           command: go build -o app
   
   static-analysis:
-      docker:
-        - image: cimg/base:stable
+      executor: go-executor
       steps:
         - run:
             name: Check formatting
@@ -44,6 +43,10 @@ jobs:
               go install golang.org/x/vuln/cmd/govulncheck@latest
               govulncheck ./... || true
 
+  docker-file-linting:
+      docker:
+        - image: cimg/base:stable
+      steps:
         - run:
             name: Lint Dockerfile
             command: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 - < Docker/Dockerfile
@@ -174,10 +177,16 @@ workflows:
             branches:
               only: feature/circleci-metrics
 
+      - docker-file-linting:
+          filters:
+            branches:
+              only: feature/circleci-metrics
+
       - docker-build-and-push:
           requires:
             - build
             - static-analysis
+            - docker-file-linting
 
       - update_gitops_dev:
           requires:
