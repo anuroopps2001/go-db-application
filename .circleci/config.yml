@@ -146,14 +146,6 @@ jobs:
              kubectl rollout restart deployment/go-db-app-version02 -n default
 
        - run:
-           name: Install dependencies
-           working_directory: k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts
-           command: |
-             sudo apt -y update 
-             sudo apt install -y python3-pip
-             pip3 install -r requirements.txt
-
-       - run:
            name: Run canary evaluation
            working_directory: k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts
            command: |
