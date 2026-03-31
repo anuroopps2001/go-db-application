@@ -25,6 +25,7 @@ jobs:
   static-analysis:
       executor: go-executor
       steps:
+        - checkout
         - run:
             name: Check formatting
             working_directory: go-application
@@ -47,6 +48,7 @@ jobs:
       docker:
         - image: cimg/base:stable
       steps:
+        - checkout
         - run:
             name: Lint Dockerfile
             command: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 - < Docker/Dockerfile
