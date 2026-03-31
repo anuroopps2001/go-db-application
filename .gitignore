@@ -25,3 +25,5 @@ vendor/
 # Github token files
 github-token.token
 
+
+credential.json

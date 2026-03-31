@@ -142,7 +142,7 @@ jobs:
        - run:
            name: wait for v2 rollout
            command: |
-             kubectl rollout restart deployment/go-db-app-version02 -n go-app-dev --timeout=120s
+             kubectl rollout restart deployment/go-db-app-version02 -n default
   
   canary_check:
       docker:
