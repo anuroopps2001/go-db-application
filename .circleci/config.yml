@@ -18,27 +18,35 @@ jobs:
             go mod tidy
 
       - run:
-          name: Check formatting
-          working_directory: go-application
-          command: |
-            test -z "$(gofmt -l .)"
-
-      - run:
-          name: Run go vet
-          working_directory: go-application
-          command: go vet ./...
-
-      - run:
-          name: Scan go vulnarabilities
-          working_directory: go-application
-          command: |
-            go install golang.org/x/vuln/cmd/govulncheck@latest
-            govulncheck ./... || true
-
-      - run:
           name: Build application
           working_directory: go-application
           command: go build -o app
+  
+  static-analysis:
+      docker:
+        - image: cimg/base:stable
+      steps:
+        - run:
+            name: Check formatting
+            working_directory: go-application
+            command: |
+              test -z "$(gofmt -l .)"
+
+        - run:
+            name: Run go vet
+            working_directory: go-application
+            command: go vet ./...
+
+        - run:
+            name: Scan go vulnarabilities
+            working_directory: go-application
+            command: |
+              go install golang.org/x/vuln/cmd/govulncheck@latest
+              govulncheck ./... || true
+
+        - run:
+            name: Lint Dockerfile
+            command: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 - < Docker/Dockerfile
 
   docker-build-and-push:
     docker:
@@ -49,10 +57,6 @@ jobs:
       
       - setup_remote_docker:
           docker_layer_caching: true  # This "remembers" the layers for next time
-
-      - run:
-          name: Lint Dockerfile
-          command: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 - < Docker/Dockerfile
 
       - run:
           name: Build the Docker image
@@ -164,10 +168,16 @@ workflows:
             branches:
               only:
                 - feature/circleci-metrics
+        
+      - static-analysis: # NEW JOB: Move Docker Linting and Go Vuln checks here
+          filters:
+            branches:
+              only: feature/circleci-metrics
 
       - docker-build-and-push:
           requires:
             - build
+            - static-analysis
 
       - update_gitops_dev:
           requires:
