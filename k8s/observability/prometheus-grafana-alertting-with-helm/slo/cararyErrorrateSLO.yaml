@@ -1,0 +1,14 @@
+groups:
+- name: canary_slos
+  rules:
+  - alert: HighCanaryErrorRate
+    expr: |
+      (sum by (version) (rate(http_requests_total{status=~"4..|5..", version="02"}[5m]))
+      / sum by (version) (rate(http_requests_total[5m]))) * 100 > 2
+    for: 2m # Wait 2 minutes to make sure errors are really high
+    labels:
+      severity: critical
+    annotations:
+      summary: "Canary version {{ $lables.version }} is failing SLO"
+      description: "Error rate is {{ $value }}%, which is above the 2% threshold.i"
+
