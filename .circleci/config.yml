@@ -49,6 +49,8 @@ jobs:
         - image: cimg/base:stable
       steps:
         - checkout
+        - setup_remote_docker:  # creates a separate, secure VM with a running Docker daemon.
+            docker_layer_caching: true    
         - run:
             name: Lint Dockerfile
             command: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 - < Docker/Dockerfile
