@@ -146,13 +146,13 @@ jobs:
   
   canary_check:
       docker:
-        - image: cimg/base:stable
-      working_directory: k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts
+        - image: cimg/base:stable 
       steps:
         - checkout
 
         - run:
             name: Install dependencies
+            working_directory: k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts
             command: |
               sudo apt update
               sudo apt install python3-pip
@@ -160,6 +160,7 @@ jobs:
 
         - run:
             name: Run canary evaluation
+            working_directory: k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts
             command: |
               sleep 60
               python3 canary_check.py 
