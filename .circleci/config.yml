@@ -93,7 +93,7 @@ jobs:
         - run:
             name: Clone gitops repo (Dev Branch)
             command: |
-              git clone -b features/circleci-metrics git@github.com:anuroopps2001/go-db-application.git
+              git clone -b feature/circleci-metrics git@github.com:anuroopps2001/go-db-application.git
 
         - run:
             name: Update the tag
