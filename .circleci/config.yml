@@ -153,8 +153,8 @@ jobs:
 
         - run:
             name: Install dependencies
+            working_directory: k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts
             command: |
-              cd k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts
               sudo apt update
               sudo apt install python3-pip
               pip3 install -r requirements.txt
