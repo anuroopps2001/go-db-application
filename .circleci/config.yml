@@ -110,7 +110,7 @@ jobs:
             name: Update the tag
             command: |
               cd k8s/go-db-app/multi-version-deployments
-              sed -i "s|image: .*|image: $DOCKERHUB_USER/go-app-circleci:${CIRCLE_SHA1}|g" go-app-deployment-version02.yaml
+              sed -i "s|image: anuroop21/go-app-circleci:.*|image: anuroop21/go-app-circleci:${CIRCLE_SHA1}|g" go-app-deployment-version02.yaml
 
         - run:
             name: Commit the changes
