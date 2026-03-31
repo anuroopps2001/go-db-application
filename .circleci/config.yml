@@ -81,6 +81,79 @@ jobs:
             docker push $DOCKERHUB_USER/go-app-circleci:${CIRCLE_SHA1}
             docker tag $DOCKERHUB_USER/go-app-circleci:${CIRCLE_SHA1} $DOCKERHUB_USER/go-app-circleci:latest
             docker push $DOCKERHUB_USER/go-app-circleci:latest
+
+  update_gitops_dev:
+      docker:
+        - image: cimg/base:stable
+      steps:
+        - checkout
+        - setup_remote_docker:
+            docker_layer_caching: true
+
+        - run:
+            name: Clone gitops repo (Dev Branch)
+            command: |
+              git clone -b features/circleci-metrics git@github.com:anuroopps2001/go-db-application.git
+
+        - run:
+            name: Update the tag
+            command: |
+              cd k8s/go-db-app/multi-version-deployments
+              sed -i "s|image: .*|image: $DOCKERHUB_USER/go-app-circleci:${CIRCLE_SHA1}|g" go-app-deployment-version02.yaml
+
+        - run:
+            name: Commit the changes
+            command: |
+              cd k8s
+              git config user.name "circleCI"
+              git config user.email "ci@circleci.com"
+
+              git add .
+              git commit -m "update v2 image ${CIRCLE_SHA1}" || echo "no changes"
+              git push origin feature/circleci-metrics
+
+  wait_for_rollout:
+     machine: true
+     resource_class: anuroopps2001/for-aks-rc
+
+     steps:
+       - run:
+           name:  Authenticate AKS
+           command: |
+             # Login using the OIDC token from CircleCI
+             az login --service-principal \
+             -u "$AZURE_CLIENT_ID" \
+             -t "$AZURE_TENANT_ID" \
+             --federated-token "$CIRCLE_OIDC_TOKEN_V2"
+
+             az aks get-credentials -g rg-aks-southindia --name aks-private-india
+
+       - run:
+           name: wait for v2 rollout
+           command: |
+             kubectl rollout restart deployment/go-db-app-version02 -n go-app-dev --timeout=120s
+  
+  canary_check:
+      docker:
+        - image: cimg/base:stable
+
+      steps:
+        - checkout
+
+        - run:
+            name: Install dependencies
+            command: |
+              cd k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts
+              sudo apt update
+              sudo apt install python3-pip
+              pip3 install -r requirements.txt
+
+        - run:
+            name: Run canary evaluation
+            command: |
+              sleep 60
+              python3 canary_check.py 
+
   
 workflows:
   version: 2
@@ -95,3 +168,15 @@ workflows:
       - docker-build-and-push:
           requires:
             - build
+
+      - update_gitops_dev:
+          requires:
+            - docker-build-and-push
+
+      - wait_for_rollout:
+          requires:
+            - update_gitops_dev
+
+      - canary_check:
+          requires:
+            - wait_for_rollout
