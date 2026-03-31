@@ -163,6 +163,7 @@ jobs:
             working_directory: k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts
             command: |
               sleep 60
+              export PROMETHEUS_URL="http://10.224.0.42:9090"
               python3 canary_check.py 
 
   

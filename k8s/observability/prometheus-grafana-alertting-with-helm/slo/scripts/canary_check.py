@@ -1,14 +1,15 @@
 import requests
 import sys
+import os
 
-PROMETHEUS_URL= "" # PrometheusURL
+prometheus_url = os.getenv("PROMETHEUS_URL", "http://localhost:9090") # PrometheusURL
 CANARY_VERSION= "02"
 ERROR_THRESHOLD="2.0"
 LATENCY_THRESHOLD="0.5"
 
 def query_prometheus(query):
     try:
-        response = requests.get(PROMETHEUS_URL, params={'query': query})
+        response = requests.get(prometheus_url, params={'query': query})
         data = response.json()
         results = data.get('data', {}).get('result', []) # List of dictionaries
         if not results:
