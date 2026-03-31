@@ -143,28 +143,22 @@ jobs:
            name: wait for v2 rollout
            command: |
              kubectl rollout restart deployment/go-db-app-version02 -n default
-  
-  canary_check:
-      docker:
-        - image: cimg/base:stable 
-      steps:
-        - checkout
 
-        - run:
-            name: Install dependencies
-            working_directory: k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts
-            command: |
-              sudo apt update
-              sudo apt install python3-pip
-              pip3 install -r requirements.txt
+       - run:
+           name: Install dependencies
+           working_directory: k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts
+           command: |
+             sudo apt update
+             sudo apt install python3-pip
+             pip3 install -r requirements.txt
 
-        - run:
-            name: Run canary evaluation
-            working_directory: k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts
-            command: |
-              sleep 60
-              export PROMETHEUS_URL="http://10.1.1.7:9090"
-              python3 canary_check.py 
+       - run:
+           name: Run canary evaluation
+           working_directory: k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts
+           command: |
+             sleep 30
+             export PROMETHEUS_URL="http://10.1.1.7:9090"
+             python3 canary_check.py 
 
   
 workflows:
@@ -200,7 +194,3 @@ workflows:
       - wait_for_rollout:
           requires:
             - update_gitops_dev
-
-      - canary_check:
-          requires:
-            - wait_for_rollout
