@@ -2,10 +2,12 @@ import requests
 import sys
 import os
 
-prometheus_url = os.getenv("PROMETHEUS_URL", "http://localhost:9090") # PrometheusURL
+
+base_url = os.getenv("PROMETHEUS_URL", "http://localhost:9090").rstrip('/')
+prometheus_url = f"{base_url}/api/v1/query"
 CANARY_VERSION= "02"
-ERROR_THRESHOLD="2.0"
-LATENCY_THRESHOLD="0.5"
+ERROR_THRESHOLD=2.0
+LATENCY_THRESHOLD=0.5
 
 def query_prometheus(query):
     try:
