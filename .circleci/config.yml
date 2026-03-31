@@ -128,6 +128,7 @@ jobs:
      resource_class: anuroopps2001/for-aks-rc
 
      steps:
+       - checkout
        - run:
            name:  Authenticate AKS
            command: |
@@ -148,8 +149,8 @@ jobs:
            name: Install dependencies
            working_directory: k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts
            command: |
-             sudo apt update
-             sudo apt install python3-pip
+             sudo apt -y update 
+             sudo apt install -y python3-pip
              pip3 install -r requirements.txt
 
        - run:
