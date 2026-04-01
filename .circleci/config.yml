@@ -80,15 +80,21 @@ jobs:
           command: |
             cd gitops-repo/overlays/dev
             sed -i "s|TAG_FROM_CI|${CIRCLE_SHA1}|g" kustomization.yaml
+
+            git fetch origin feature/circleci-metrics
+            git reset --mixed origin/feature/circleci-metrics
             
             git config user.name "circleCI"
             git config user.email "ci@circleci.com"
+
             git add kustomization.yaml
             
             # Only commit if changes exist to avoid empty commit errors
             if ! git diff --cached --quiet; then
               git commit -m "Update Dev Canary to ${CIRCLE_SHA1} [skip ci]"
               git push origin feature/circleci-metrics
+            else
+              echo "No changes detected, skipping push."
             fi
 
   wait_for_rollout:
