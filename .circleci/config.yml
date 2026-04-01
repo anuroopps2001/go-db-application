@@ -122,7 +122,7 @@ jobs:
               git config user.email "ci@circleci.com"
 
               git add go-app-deployment-version02.yaml
-              git commit -m "update v2 image ${CIRCLE_SHA1}" || echo "no changes"
+              git commit -m "update v2 image ${CIRCLE_SHA1} [skip ci]" || echo "no changes"
               git push origin feature/circleci-metrics
 
 
@@ -155,7 +155,7 @@ jobs:
              git config user.name "circleCI"
              git config user.email "ci@circleci.com"
              git add .
-             git commit -m "Traffic shift v1:<< parameters.v1_weight >> v2:<< parameters.v2_weight >>" || echo "no changes"              
+             git commit -m "Traffic shift v1:<< parameters.v1_weight >> v2:<< parameters.v2_weight >> [skip ci]" || echo "no changes"              
              git push origin feature/circleci-metrics
 
 # ---------------- WAIT ----------------
@@ -189,13 +189,6 @@ jobs:
      steps:
        - checkout
        - run:
-           name: Install python
-           command: |
-             cd k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts
-             sudo apt update
-             pip3 install requirements.txt
-
-       - run:
            name: Run checks
            command: |
              export PROMETHEUS_URL="http://10.1.1.7:9090"
@@ -217,7 +210,7 @@ jobs:
              git config user.name "circleCI"
              git config user.email "ci@circleci.com"
              git add .
-             git commit -m "Rollback to v1" || true
+             git commit -m "Rollback to v1 [skip ci]" || true
              git push origin feature/circleci-metrics
 
              exit 1
@@ -241,7 +234,7 @@ jobs:
             git config user.email "ci@circleci.com"
 
             git add argocd/version-specific-go-app/deployments/go-app-deployment-version01.yaml
-            git commit -m "Promote v2 -> v1" || echo true
+            git commit -m "Promote v2 -> v1 [skip ci]" || echo true
             git push origin feature/circleci-metrics
 
 workflows:
