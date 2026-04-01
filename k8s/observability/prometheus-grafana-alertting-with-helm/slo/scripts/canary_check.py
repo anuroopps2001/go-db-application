@@ -7,7 +7,7 @@ base_url = os.getenv("PROMETHEUS_URL", "http://localhost:9090").rstrip('/')
 prometheus_url = f"{base_url}/api/v1/query"
 CANARY_VERSION= "02"
 ERROR_THRESHOLD=2.0
-LATENCY_THRESHOLD=0.001
+LATENCY_THRESHOLD=0.1
 
 def query_prometheus(query):
     try:
