@@ -26,4 +26,4 @@ patches:
     patch: |-
       - op: replace
         path: /spec/template/spec/containers/0/image
-        value: anuroop21/go-app-circleci:TAG_FROM_CI # CircleCI will 'sed' this
+        value: anuroop21/go-app-circleci:ef89658572f08899eb95a322e41aa205a953f38d # CircleCI will 'sed' this
