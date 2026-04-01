@@ -1,0 +1,29 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# This file tells ArgoCD: "Take everything in Base, but apply these Dev-specific rules."
+
+# Points to your newly organized base
+resources:
+  - ../../base
+
+# Forces all resources (Deployments, Services, etc.) into the Dev namespace
+namespace: go-db-app-dev
+
+
+# Target ONLY v2 to give it the new image from CircleCI
+patches:
+  - target:
+      kind: Deployment
+      name: go-db-app-version01
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/image
+        value: anuroop21/go-app-circleci:stable-tag # This is your current prod/stable version
+        
+  - target:
+      kind: Deployment
+      name: go-db-app-version02
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/image
+        value: anuroop21/go-app-circleci:TAG_FROM_CI # CircleCI will 'sed' this

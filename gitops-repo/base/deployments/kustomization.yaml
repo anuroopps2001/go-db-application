@@ -1,0 +1,6 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - go-app-deployment-version02.yaml
+  - go-app-deployment-version01.yaml
+  - postgres-deployment.yaml

@@ -4,11 +4,9 @@ executors:
   go-executor:
     docker:
       - image: cimg/go:1.23
-
   base:
     docker:
       - image: cimg/base:stable
-
   azure_self_runner:
     machine: true
     resource_class: anuroopps2001/for-aks-rc
@@ -20,266 +18,176 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Install dependencies
+          name: Build application
           working_directory: go-application
           command: |
             go mod tidy
-
-      - run:
-          name: Build application
-          working_directory: go-application
-          command: go build -o app
+            go build -o app
   
   static-analysis:
-      executor: go-executor
-      steps:
-        - checkout
-        - run:
-            name: Check formatting
-            working_directory: go-application
-            command: |
-              test -z "$(gofmt -l .)"
-
-        - run:
-            name: Run go vet
-            working_directory: go-application
-            command: go vet ./...
-
-        - run:
-            name: Scan go vulnarabilities
-            working_directory: go-application
-            command: |
-              go install golang.org/x/vuln/cmd/govulncheck@latest
-              govulncheck ./... || true
+    executor: go-executor
+    steps:
+      - checkout
+      - run:
+          name: Quality and Vulnerability Scan
+          working_directory: go-application
+          command: |
+            test -z "$(gofmt -l .)"
+            go vet ./...
+            go install golang.org/x/vuln/cmd/govulncheck@latest
+            govulncheck ./... || true
 
   docker-file-linting:
-      executor: base
-      steps:
-        - checkout
-        - setup_remote_docker:  # creates a separate, secure VM with a running Docker daemon.
-            docker_layer_caching: true    
-        - run:
-            name: Lint Dockerfile
-            command: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 - < Docker/Dockerfile
+    executor: base
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true    
+      - run:
+          name: Lint Dockerfile
+          command: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 - < Docker/Dockerfile
 
   docker-build-and-push:
     executor: base
     working_directory: ~/project
     steps:
       - checkout
-      
       - setup_remote_docker:
-          docker_layer_caching: true  # This "remembers" the layers for next time
-
+          docker_layer_caching: true
       - run:
-          name: Build the Docker image
+          name: Build, Scan, and Push
           command: |
-            TAG="${CIRCLE_BUILD_NUM}"
             docker build -f Docker/Dockerfile -t $DOCKERHUB_USER/go-app-circleci:${CIRCLE_SHA1} .
-
-      - run:
-          name: Install Trivy
-          command: |
+            # Install Trivy
             curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
-
-      - run:
-          name: Scan Docker image
-          command: |
             ./bin/trivy image --severity HIGH,CRITICAL --ignore-unfixed $DOCKERHUB_USER/go-app-circleci:${CIRCLE_SHA1}
-
-      - run:
-          name: Login to DockerHub
-          command: |
+            # Login and Push
             echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
-
-      - run:
-          name: Push docker image
-          command: |
             docker push $DOCKERHUB_USER/go-app-circleci:${CIRCLE_SHA1}
             docker tag $DOCKERHUB_USER/go-app-circleci:${CIRCLE_SHA1} $DOCKERHUB_USER/go-app-circleci:latest
             docker push $DOCKERHUB_USER/go-app-circleci:latest
 
-  update_gitops_dev:
-      docker:
-        - image: cimg/base:stable
-      working_directory: ~/project
-      steps:
-        - checkout
-        - setup_remote_docker:
-            docker_layer_caching: true
-
-        - run:
-            name: Update the tag
-            command: |
-              cd argocd/version-specific-go-app/deployments
-              sed -i "s|image: anuroop21/go-app-circleci:.*|image: anuroop21/go-app-circleci:${CIRCLE_SHA1}|g" go-app-deployment-version02.yaml
-
-        - run:
-            name: Commit the changes
-            command: |
-              cd argocd/version-specific-go-app/deployments
-              git config user.name "circleCI"
-              git config user.email "ci@circleci.com"
-
-              git add go-app-deployment-version02.yaml
-              git commit -m "update v2 image ${CIRCLE_SHA1} [skip ci]" || echo "no changes"
-              git push origin feature/circleci-metrics
-
-
   update_traffic:
-     executor: base
-     working_directory: ~/project
-     parameters:
-       v1_weight:
-         type: string
-       v2_weight:
-         type: string
-     steps:
-       - checkout
-       - run:
-           name: Update traffic split
-           command: |
-             cd argocd/version-specific-go-app/gateway
-
-             # Update weight for the first backend (v1)
-             yq -i '.spec.rules[0].backendRefs[0].weight = << parameters.v1_weight >>' httproute.yaml
-
-             # Update weight for the second backend (v2)
-             yq -i '.spec.rules[0].backendRefs[1].weight = << parameters.v2_weight >>' httproute.yaml
-
-       - run:
-           name: Push the changes
-           command: |
-             cd argocd/version-specific-go-app/gateway
-
-             git fetch origin feature/circleci-metrics
-             git reset --mixed origin/feature/circleci-metrics
-
-             git config user.name "circleCI"
-             git config user.email "ci@circleci.com"
-             git add httproute.yaml
-
-             if ! git diff --cached --quiet; then
-              git commit -m "Traffic shift v1:<< parameters.v1_weight >> v2:<< parameters.v2_weight >> [skip ci]" || echo "no changes"              
-              git push origin feature/circleci-metrics
-             fi
-
-# ---------------- WAIT ----------------
-  wait_for_rollout:
-     executor: azure_self_runner
-
-     steps:
-       - checkout
-       - run:
-           name:  Authenticate AKS and Wait for argocd to deploy
-           command: |
-             # Login using the OIDC token from CircleCI
-             az login --service-principal \
-             -u "$AZURE_CLIENT_ID" \
-             -t "$AZURE_TENANT_ID" \
-             --federated-token "$CIRCLE_OIDC_TOKEN_V2"
-
-             az aks get-credentials -g rg-aks-southindia --name aks-private-india
-
-             kubectl rollout status deployment/go-db-app-version02 -n default --timout=60s
-
-# ---------------- CANARY CHECK + ROLLBACK ----------------
-  canary_check:
-     machine: true
-     resource_class: anuroopps2001/for-aks-rc
-     parameters:
-       v1_rollback_weight:
-         type: string
-       v2_rollback_weight:
-         type: string
-     steps:
-       - checkout
-       - run:
-           name: Run checks
-           command: |
-             sleep 300s
-             export PROMETHEUS_URL="http://10.1.1.7:9090"
-             python3 k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts/canary_check.py
-
-# The command ssh-keyscan github.com >> ~/.ssh/known_hosts performs a "Pre-emptive Trust" setup:
-# ssh-keyscan github.com: It reaches out to GitHub and asks for its public host keys (its "digital fingerprint").
-# >> ~/.ssh/known_hosts: It appends those fingerprints to a local file on your Azure VM called known_hosts.
-# Once that fingerprint is in that file, the next time you run git push, SSH checks the file, sees that the fingerprint matches, and proceeds with the connection silently without asking for permission.
-       - run:
-           name: Setup SSH
-           command: |
-             # To make our runner trust github
-             if [ ! -d ~/.ssh ]; then
-               echo "Creating .ssh directory"
-               mkdir ~/.ssh
-              fi
-              ssh-keyscan github.com >> ~/.ssh/known_hosts
-
-       - run:
-           name: Rollback to traffic v1
-           when: on_fail
-           command: |
-             echo "Rollback triggered"
-             cd argocd/version-specific-go-app/gateway
-             
-             git fetch origin feature/circleci-metrics
-             git reset --mixed origin/feature/circleci-metrics
-
-             # Update weight for the first backend (v1)
-             yq -i '.spec.rules[0].backendRefs[0].weight = << parameters.v1_rollback_weight >>' httproute.yaml
-
-             # Update weight for the second backend (v2)
-             yq -i '.spec.rules[0].backendRefs[1].weight = << parameters.v2_rollback_weight >>' httproute.yaml
-
-             git config user.name "circleCI"
-             git config user.email "ci@circleci.com"
-
-             git add httproute.yaml
-
-             if ! git diff --cached --quiet; then
-               git commit -m "Rollback to v1 [skip ci]" || true
-               git push origin feature/circleci-metrics --force-with-lease
-             else
-               echo "No changes to httproute.yaml, skipping push."
-             fi
-      
-  promote:
     executor: base
-    # Define the working directory so 'checkout' and 'run' are in the same place
-    working_directory: ~/project 
+    working_directory: ~/project
+    parameters:
+      v1_weight: { type: string }
+      v2_weight: { type: string }
     steps:
-      - checkout # Pulls the repo into ~/project
+      - checkout
       - run:
-          name: Promote v2 -> v1
+          name: Update Kustomize Dev Overlay
           command: |
-            cd argocd/version-specific-go-app/deployments
-            
-            git fetch origin feature/circleci-metrics
-            git reset --mixed origin/feature/circleci-metrics
-            
-            sed -i "s|image: anuroop21/go-app-circleci:.*|image: anuroop21/go-app-circleci:${CIRCLE_SHA1}|g" go-app-deployment-version01.yaml
+            cd gitops-repo/overlays/dev
+            sed -i "s|TAG_FROM_CI|${CIRCLE_SHA1}|g" kustomization.yaml
             
             git config user.name "circleCI"
             git config user.email "ci@circleci.com"
-
-            git add go-app-deployment-version01.yaml
+            git add kustomization.yaml
             
+            # Only commit if changes exist to avoid empty commit errors
             if ! git diff --cached --quiet; then
-               git commit -m "Promote v2 -> v1 [skip ci]" || true
-               git push origin feature/circleci-metrics --force-with-lease
+              git commit -m "Update Dev Canary to ${CIRCLE_SHA1} [skip ci]"
+              git push origin feature/circleci-metrics
             fi
+
+  wait_for_rollout:
+    executor: azure_self_runner
+    steps:
+      - checkout
+      - run:
+          name: Authenticate AKS and Wait
+          command: |
+            az login --service-principal -u "$AZURE_CLIENT_ID" -t "$AZURE_TENANT_ID" --federated-token "$CIRCLE_OIDC_TOKEN_V2"
+            az aks get-credentials -g rg-aks-southindia --name aks-private-india
+            kubectl rollout status deployment/go-db-app-version02 -n default --timeout=60s
+
+  canary_check:
+    machine: true
+    resource_class: anuroopps2001/for-aks-rc
+    parameters:
+      v1_rollback_weight: { type: string }
+      v2_rollback_weight: { type: string }
+    steps:
+      - checkout
+      - run:
+          name: Prometheus SLO Check
+          command: |
+            sleep 300s
+            export PROMETHEUS_URL="http://10.1.1.7:9090"
+            python3 k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts/canary_check.py
+      - run:
+          name: Rollback on Failure
+          when: on_fail
+          command: |
+            # Standard Git Rollback logic using yq
+            yq -i ".spec.rules[0].backendRefs[0].weight = << parameters.v1_rollback_weight >>" argocd/version-specific-go-app/gateway/httproute.yaml
+            yq -i ".spec.rules[0].backendRefs[1].weight = << parameters.v2_rollback_weight >>" argocd/version-specific-go-app/gateway/httproute.yaml
+            git config user.name "circleCI"
+            git config user.email "ci@circleci.com"
+            git add argocd/version-specific-go-app/gateway/httproute.yaml
+            git commit -m "Rollback triggered [skip ci]"
+            git push origin feature/circleci-metrics
+
+  promote:
+    executor: base
+    working_directory: ~/project 
+    steps:
+      - checkout 
+      - run:
+          name: Shift Stable Image (v2 -> v1)
+          command: |
+            cd argocd/version-specific-go-app/deployments
+            sed -i "s|image: anuroop21/go-app-circleci:.*|image: anuroop21/go-app-circleci:${CIRCLE_SHA1}|g" go-app-deployment-version01.yaml
+            git config user.name "circleCI"
+            git config user.email "ci@circleci.com"
+            git add .
+            git commit -m "Promote v2 -> v1 [skip ci]" || true
+            git push origin feature/circleci-metrics
+
+  create_staging_pr:
+    executor: base
+    working_directory: ~/project
+    steps:
+      - checkout
+      - run:
+          name: Create Staging Promotion PR
+          command: |
+            git config user.email "ci@circle.com"
+            git config user.name "circleci"
+            
+            BRANCH_NAME="promote-${CIRCLE_SHA1:0:7}"
+            echo "export BRANCH=$BRANCH_NAME" >> $BASH_ENV
+            
+            # Branching directly from staging to ensure a clean PR
+            git fetch origin staging
+            git checkout -b $BRANCH_NAME origin/staging
+            
+            # Apply image change to Staging Kustomize Overlay
+            cd gitops-repo/overlays/staging
+            sed -i "s|TAG_FROM_CI|${CIRCLE_SHA1}|g" kustomization.yaml
+            
+            git add kustomization.yaml
+            git commit -m "Promote to Staging: ${CIRCLE_SHA1} [skip ci]"
+            git push origin $BRANCH_NAME
+            
+            # GitHub CLI creates the PR (Ensure GITHUB_TOKEN is in Env Vars)
+            gh pr create \
+              --title "🚀 Promote Dev to Staging: ${CIRCLE_SHA1:0:7}" \
+              --body "Automated promotion from feature/circleci-metrics to staging." \
+              --base staging \
+              --head $BRANCH_NAME
 
 workflows:
   version: 2
-  build_and_push:
+  build_and_deploy:
     jobs:
       - build:
           filters:
             branches:
-              only:
-                - feature/circleci-metrics
-        
-      - static-analysis: # NEW JOB: Move Docker Linting and Go Vuln checks here
+              only: feature/circleci-metrics
+
+      - static-analysis:
           filters:
             branches:
               only: feature/circleci-metrics
@@ -290,64 +198,55 @@ workflows:
               only: feature/circleci-metrics
 
       - docker-build-and-push:
-          requires:
-            - build
-            - static-analysis
-            - docker-file-linting
-
-      - update_gitops_dev:
-          requires:
-            - docker-build-and-push
-          
-      - approve_10:
-          type: approval
-          requires:
-            - update_gitops_dev
+          requires: [build, static-analysis, docker-file-linting]
 
       - update_traffic:
           name: traffic_10
           v1_weight: "90"
           v2_weight: "10"
-          requires: [approve_10]
+          requires: [docker-build-and-push]
+
+      - wait_for_rollout:
+          requires: [traffic_10]
 
       - canary_check:
           name: check_10
           v1_rollback_weight: "100"
           v2_rollback_weight: "0"
-          requires:
-            - traffic_10
+          requires: [wait_for_rollout]
 
       - approve_50:
           type: approval
-          requires:
-            - check_10
+          requires: [check_10]
 
       - update_traffic:
           name: traffic_50
           v1_weight: "50"
           v2_weight: "50"
-          requires:
-            - approve_50
+          requires: [approve_50]
 
       - canary_check:
           name: check_50
           v1_rollback_weight: "100"
           v2_rollback_weight: "0"
-          requires:
-            - traffic_50
-      
+          requires: [traffic_50]
+
       - approve_100:
           type: approval
-          requires:
-            - check_50
+          requires: [check_50]
 
       - update_traffic:
           name: traffic_100
           v1_weight: "0"
           v2_weight: "100"
-          requires:
-            - approve_100
+          requires: [approve_100]
 
       - promote:
-          requires:
-            - traffic_100
+          requires: [traffic_100]
+
+      - approve_staging:
+          type: approval
+          requires: [promote]
+          
+      - create_staging_pr:
+          requires: [approve_staging]
