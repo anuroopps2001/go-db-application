@@ -143,12 +143,21 @@ jobs:
       - run:
           name: Shift Stable Image (v2 -> v1)
           command: |
-            cd argocd/version-specific-go-app/deployments
-            sed -i "s|image: anuroop21/go-app-circleci:.*|image: anuroop21/go-app-circleci:${CIRCLE_SHA1}|g" go-app-deployment-version01.yaml
+            cd gitops-repo/overlays/dev
+            
+            # Target only the version01 block and update its image to the current SHA 100% tested version02 
+            sed -i "/go-db-app-version01/,/value:/ s|value: .*|value: anuroop21/go-app-circleci:${CIRCLE_SHA1}|" kustomization.yaml
+            
+            # Reset the version02 placeholder so the next pipeline starts fresh
+            sed -i "/go-db-app-version02/,/value:/ s|value: .*|value: anuroop21/go-app-circleci:TAG_FROM_CI|" kustomization.yaml
+
+            git fetch origin feature/circleci-metrics
+            git reset --mixed origin/feature/circleci-metrics
+
             git config user.name "circleCI"
             git config user.email "ci@circleci.com"
-            git add .
-            git commit -m "Promote v2 -> v1 [skip ci]" || true
+            git add kustomization.yaml
+            git commit -m "Promote: ${CIRCLE_SHA1} is now the stable Version 01 [skip ci]"
             git push origin feature/circleci-metrics
 
   create_staging_pr:
