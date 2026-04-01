@@ -192,7 +192,18 @@ jobs:
            name: Run checks
            command: |
              export PROMETHEUS_URL="http://10.1.1.7:9090"
-             python3 go-db-application/k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts/canary_check.py
+             python3 k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts/canary_check.py
+
+# The command ssh-keyscan github.com >> ~/.ssh/known_hosts performs a "Pre-emptive Trust" setup:
+# ssh-keyscan github.com: It reaches out to GitHub and asks for its public host keys (its "digital fingerprint").
+# >> ~/.ssh/known_hosts: It appends those fingerprints to a local file on your Azure VM called known_hosts.
+# Once that fingerprint is in that file, the next time you run git push, SSH checks the file, sees that the fingerprint matches, and proceeds with the connection silently without asking for permission.
+       - run:
+           name: Setup SSH
+           command: |
+             # To make our runner trust github
+             mkdir ~/.ssh
+             ssh-keyscan github.com >> ~/.ssh/known_hosts
 
        - run:
            name: Rollback to traffic v1
@@ -202,10 +213,10 @@ jobs:
              cd argocd/version-specific-go-app/gateway
 
              # Update weight for the first backend (v1)
-             yq -i '.spec.rules[0].backendRefs[0].weight == << parameters.v1_rollback_weight >>' httproute.yaml
+             yq -i '.spec.rules[0].backendRefs[0].weight = << parameters.v1_rollback_weight >>' httproute.yaml
 
              # Update weight for the second backend (v2)
-             yq -i '.spec.rules[0].backendRefs[1].weight == << parameters.v2_rollback_weight >>' httproute.yaml
+             yq -i '.spec.rules[0].backendRefs[1].weight = << parameters.v2_rollback_weight >>' httproute.yaml
 
              git config user.name "circleCI"
              git config user.email "ci@circleci.com"

@@ -36,7 +36,7 @@ spec:
           - sh
           - -c
           - |
-          - until pg_isready -h postgres-db-service -p 5432 -U postgres; do
+            until pg_isready -h postgres-db-service -p 5432 -U postgres; do
               echo "waiting for postgres-db to be ready.."
               sleep 3
               done

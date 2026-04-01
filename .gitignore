@@ -25,7 +25,5 @@ vendor/
 # Github token files
 github-token.token
 
-# Ignore Argocd Application Manifests
-argocd-application-yamls  
 
 credential.json
