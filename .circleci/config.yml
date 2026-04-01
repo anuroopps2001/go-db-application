@@ -150,7 +150,7 @@ jobs:
        - run:
            name: Push the changes
            command: |
-             cd go-db-application
+             cd argocd/version-specific-go-app/gateway
 
              git config user.name "circleCI"
              git config user.email "ci@circleci.com"
