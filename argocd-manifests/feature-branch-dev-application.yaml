@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: go-db-app-dev
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/anuroopps2001/go-db-application.git
+    targetRevision: feature/circleci-metrics # Watches your feature branch
+    path: gitops-repo/overlays/dev # Points to the Dev Kustomize folder
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: go-db-app-dev # Must match the namespace in kustomization.yaml
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true # ArgoCD will create the namespace if it doesn't exist

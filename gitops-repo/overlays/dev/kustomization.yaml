@@ -18,8 +18,8 @@ patches:
     patch: |-
       - op: replace
         path: /spec/template/spec/containers/0/image
-        value: anuroop21/go-app-circleci:stable-tag # This is your current prod/stable version
-        
+        value: anuroop21/go-app-circleci:23034f5a4e18a04984d83125176ca2fbb75107d7 # This is your current prod/stable version
+
   - target:
       kind: Deployment
       name: go-db-app-version02
