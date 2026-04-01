@@ -142,21 +142,27 @@ jobs:
              cd argocd/version-specific-go-app/gateway
 
              # Update weight for the first backend (v1)
-             yq -i '.spec.rules[0].backendRefs[0].weight == << parameters.v1_weight >>' httproute.yaml
+             yq -i '.spec.rules[0].backendRefs[0].weight = << parameters.v1_weight >>' httproute.yaml
 
              # Update weight for the second backend (v2)
-             yq -i '.spec.rules[0].backendRefs[1].weight == << parameters.v2_weight >>' httproute.yaml
+             yq -i '.spec.rules[0].backendRefs[1].weight = << parameters.v2_weight >>' httproute.yaml
 
        - run:
            name: Push the changes
            command: |
              cd argocd/version-specific-go-app/gateway
 
+             git fetch origin feature/circleci-metrics
+             git reset --mixed origin/feature/circleci-metrics
+
              git config user.name "circleCI"
              git config user.email "ci@circleci.com"
-             git add .
-             git commit -m "Traffic shift v1:<< parameters.v1_weight >> v2:<< parameters.v2_weight >> [skip ci]" || echo "no changes"              
-             git push origin feature/circleci-metrics
+             git add httproute.yaml
+
+             if ! git diff --cached --quiet; then
+              git commit -m "Traffic shift v1:<< parameters.v1_weight >> v2:<< parameters.v2_weight >> [skip ci]" || echo "no changes"              
+              git push origin feature/circleci-metrics
+             fi
 
 # ---------------- WAIT ----------------
   wait_for_rollout:
