@@ -276,13 +276,13 @@ workflows:
 
       - update_traffic:
           name: traffic_10
-          v1: "90"
-          v2: "10"
+          v1_weight: "90"
+          v2_weight: "10"
           requires: [update_gitops_dev]
 
       - canary_check:
           name: check_10
-          v1_rollback_traffic: "100"
+          v1_rollback_weight: "100"
           v2_rollback_weight: "0"
           requires:
             - traffic_10
@@ -290,8 +290,8 @@ workflows:
 
       - update_traffic:
           name: traffic_50
-          v1: "50"
-          v2: "50"
+          v1_weight: "50"
+          v2_weight: "50"
           requires:
             - check_10
 
@@ -304,8 +304,8 @@ workflows:
 
       - update_traffic:
           name: traffic_100
-          v1: "0"
-          v2: "100"
+          v1_weight: "0"
+          v2_weight: "100"
           requires:
             - check_50
 
