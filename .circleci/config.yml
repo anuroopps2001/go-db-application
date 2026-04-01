@@ -233,12 +233,14 @@ jobs:
 
              git config user.name "circleCI"
              git config user.email "ci@circleci.com"
-             git pull origin  
+
              git add httproute.yaml
 
              if ! git diff --cached --quiet; then
                git commit -m "Rollback to v1 [skip ci]" || true
                git push origin feature/circleci-metrics --force-with-lease
+             else
+               echo "No changes to httproute.yaml, skipping push."
              fi
       
   promote:
