@@ -7,7 +7,7 @@ executors:
 
   base:
     docker:
-      - image: cimg/base:stabe
+      - image: cimg/base:stable
 
   azure_self_runner:
     machine: true
