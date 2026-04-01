@@ -5,30 +5,30 @@ metadata:
   namespace: go-db-app-canary-ns
 spec:
   parentRefs:
-  - group: gateway.networking.k8s.io
-    kind: Gateway
-    name: nginx-gateway-for-all
-    namespace: nginx-gateway
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: nginx-gateway-for-all
+      namespace: nginx-gateway
   hostnames:
-  - go.app.version.split.local
+    - go.app.version.split.local
   rules:
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /user
-    - path:
-        type: PathPrefix
-        value: /users
-    - path:
-        type: PathPrefix
-        value: /ready
-    - path:
-        type: PathPrefix
-        value: /healthz
-    backendRefs:
-    - name: go-db-service-sample-version-01
-      port: 8080
-      weight: 20
-    - name: go-db-service-sample-version-02
-      port: 8080
-      weight: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /user
+        - path:
+            type: PathPrefix
+            value: /users
+        - path:
+            type: PathPrefix
+            value: /ready
+        - path:
+            type: PathPrefix
+            value: /healthz
+      backendRefs:
+        - name: go-db-service-sample-version-01
+          port: 8080
+          weight: 90
+        - name: go-db-service-sample-version-02
+          port: 8080
+          weight: 10
