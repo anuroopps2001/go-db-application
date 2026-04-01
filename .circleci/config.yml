@@ -100,7 +100,7 @@ jobs:
           command: |
             az login --service-principal -u "$AZURE_CLIENT_ID" -t "$AZURE_TENANT_ID" --federated-token "$CIRCLE_OIDC_TOKEN_V2"
             az aks get-credentials -g rg-aks-southindia --name aks-private-india
-            kubectl rollout status deployment/go-db-app-version02 -n  --timeout=60s
+            kubectl rollout status deployment/go-db-app-version02 -n go-db-app-dev  --timeout=60s
 
   canary_check:
     machine: true
