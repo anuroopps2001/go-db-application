@@ -255,10 +255,6 @@ jobs:
             git reset --mixed origin/feature/circleci-metrics
             
             sed -i "s|image: anuroop21/go-app-circleci:.*|image: anuroop21/go-app-circleci:${CIRCLE_SHA1}|g" go-app-deployment-version01.yaml
-
-      - run:
-          name: Commit the changes
-          command: |
             git config user.name "circleCI"
             git config user.email "ci@circleci.com"
 
@@ -298,12 +294,17 @@ workflows:
       - update_gitops_dev:
           requires:
             - docker-build-and-push
+          
+      - approve_10:
+          type: approval
+          requires:
+            - update_gitops_dev
 
       - update_traffic:
           name: traffic_10
           v1_weight: "90"
           v2_weight: "10"
-          requires: [update_gitops_dev]
+          requires: [approve_10]
 
       - canary_check:
           name: check_10
@@ -312,13 +313,17 @@ workflows:
           requires:
             - traffic_10
 
+      - approve_50:
+          type: approval
+          requires:
+            - check_10
 
       - update_traffic:
           name: traffic_50
           v1_weight: "50"
           v2_weight: "50"
           requires:
-            - check_10
+            - approve_50
 
       - canary_check:
           name: check_50
@@ -326,13 +331,18 @@ workflows:
           v2_rollback_weight: "0"
           requires:
             - traffic_50
+      
+      - approve_100:
+          type: approval
+          requires:
+            - check_50
 
       - update_traffic:
           name: traffic_100
           v1_weight: "0"
           v2_weight: "100"
           requires:
-            - check_50
+            - approve_100
 
       - promote:
           requires:
