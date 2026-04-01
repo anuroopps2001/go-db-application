@@ -202,8 +202,11 @@ jobs:
            name: Setup SSH
            command: |
              # To make our runner trust github
-             mkdir ~/.ssh
-             ssh-keyscan github.com >> ~/.ssh/known_hosts
+             if [ ! -d ~/.ssh ]; then
+               echo "Creating .ssh directory"
+               mkdir ~/.ssh
+              fi
+              ssh-keyscan github.com >> ~/.ssh/known_hosts
 
        - run:
            name: Rollback to traffic v1
@@ -211,6 +214,9 @@ jobs:
            command: |
              echo "Rollback triggered"
              cd argocd/version-specific-go-app/gateway
+             
+             git fetch origin feature/circleci-metrics
+             git reset --mixed origin/feature/circleci-metrics
 
              # Update weight for the first backend (v1)
              yq -i '.spec.rules[0].backendRefs[0].weight = << parameters.v1_rollback_weight >>' httproute.yaml
@@ -220,11 +226,13 @@ jobs:
 
              git config user.name "circleCI"
              git config user.email "ci@circleci.com"
-             git add .
-             git commit -m "Rollback to v1 [skip ci]" || true
-             git push origin feature/circleci-metrics
+             git pull origin  
+             git add httproute.yaml
 
-             exit 1
+             if ! git diff --cached --quiet; then
+               git commit -m "Rollback to v1 [skip ci]" || true
+               git push origin feature/circleci-metrics --force-with-lease
+             fi
       
   promote:
     executor: base
@@ -236,6 +244,10 @@ jobs:
           name: Promote v2 -> v1
           command: |
             cd argocd/version-specific-go-app/deployments
+            
+            git fetch origin feature/circleci-metrics
+            git reset --mixed origin/feature/circleci-metrics
+            
             sed -i "s|image: anuroop21/go-app-circleci:.*|image: anuroop21/go-app-circleci:${CIRCLE_SHA1}|g" go-app-deployment-version01.yaml
 
       - run:
@@ -244,9 +256,12 @@ jobs:
             git config user.name "circleCI"
             git config user.email "ci@circleci.com"
 
-            git add argocd/version-specific-go-app/deployments/go-app-deployment-version01.yaml
             git commit -m "Promote v2 -> v1 [skip ci]" || echo true
-            git push origin feature/circleci-metrics
+
+            if ! git diff --cached --quiet; then
+               git commit -m "Promote v2 -> v1 [skip ci]" || true
+               git push origin feature/circleci-metrics --force-with-lease
+            fi
 
 workflows:
   version: 2
