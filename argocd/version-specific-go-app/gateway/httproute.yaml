@@ -5,10 +5,10 @@ metadata:
   namespace: go-db-app-canary-ns
 spec:
   parentRefs:
-    - group: gateway.networking.k8s.io
-      kind: Gateway
-      name: nginx-gateway-for-all
-      namespace: nginx-gateway
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: nginx-gateway-for-all
+    namespace: nginx-gateway
   hostnames:
     - go.app.version.split.local
   rules:
