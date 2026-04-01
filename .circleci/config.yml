@@ -5,6 +5,14 @@ executors:
     docker:
       - image: cimg/go:1.23
 
+  base:
+    docker:
+      - image: cimg/base:stabe
+
+  azure_self_runner:
+    machine: true
+    resource_class: anuroopps2001/for-aks-rc
+
 jobs:
   build:
     executor: go-executor
@@ -45,8 +53,7 @@ jobs:
               govulncheck ./... || true
 
   docker-file-linting:
-      docker:
-        - image: cimg/base:stable
+      executor: base
       steps:
         - checkout
         - setup_remote_docker:  # creates a separate, secure VM with a running Docker daemon.
@@ -56,8 +63,7 @@ jobs:
             command: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 - < Docker/Dockerfile
 
   docker-build-and-push:
-    docker:
-      - image: cimg/base:stable
+    executor: base
     working_directory: ~/project
     steps:
       - checkout
@@ -96,41 +102,70 @@ jobs:
   update_gitops_dev:
       docker:
         - image: cimg/base:stable
+      working_directory: ~/project
       steps:
         - checkout
         - setup_remote_docker:
             docker_layer_caching: true
 
         - run:
-            name: Clone gitops repo (Dev Branch)
-            command: |
-              git clone -b feature/circleci-metrics git@github.com:anuroopps2001/go-db-application.git
-
-        - run:
             name: Update the tag
             command: |
-              cd k8s/go-db-app/multi-version-deployments
+              cd argocd/version-specific-go-app/deployments
               sed -i "s|image: anuroop21/go-app-circleci:.*|image: anuroop21/go-app-circleci:${CIRCLE_SHA1}|g" go-app-deployment-version02.yaml
 
         - run:
             name: Commit the changes
             command: |
-              cd k8s
+              cd argocd/version-specific-go-app/deployments
               git config user.name "circleCI"
               git config user.email "ci@circleci.com"
 
-              git add .
+              git add go-app-deployment-version02.yaml
               git commit -m "update v2 image ${CIRCLE_SHA1}" || echo "no changes"
               git push origin feature/circleci-metrics
 
+
+  update_traffic:
+     executor: base
+     working_directory: ~/project
+     parameters:
+       v1_weight:
+         type: string
+       v2_weight:
+         type: string
+     steps:
+       - checkout
+       - run:
+           name: Update traffic split
+           command: |
+             cd argocd/version-specific-go-app/gateway
+
+             # Update weight for the first backend (v1)
+             yq -i '.spec.rules[0].backendRefs[0].weight == << parameters.v1_weight >>' httproute.yaml
+
+             # Update weight for the second backend (v2)
+             yq -i '.spec.rules[0].backendRefs[1].weight == << parameters.v2_weight >>' httproute.yaml
+
+       - run:
+           name: Push the changes
+           command: |
+             cd go-db-application
+
+             git config user.name "circleCI"
+             git config user.email "ci@circleci.com"
+             git add .
+             git commit -m "Traffic shift v1:<< parameters.v1_weight >> v2:<< parameters.v2_weight >>" || echo "no changes"              
+             git push origin feature/circleci-metrics
+
+# ---------------- WAIT ----------------
   wait_for_rollout:
-     machine: true
-     resource_class: anuroopps2001/for-aks-rc
+     executor: azure_self_runner
 
      steps:
        - checkout
        - run:
-           name:  Authenticate AKS
+           name:  Authenticate AKS and Wait for argocd to deploy
            command: |
              # Login using the OIDC token from CircleCI
              az login --service-principal \
@@ -140,20 +175,75 @@ jobs:
 
              az aks get-credentials -g rg-aks-southindia --name aks-private-india
 
+             kubectl rollout status deployment/go-db-app-version02 -n default --timout=60s
+
+# ---------------- CANARY CHECK + ROLLBACK ----------------
+  canary_check:
+     machine: true
+     resource_class: anuroopps2001/for-aks-rc
+     parameters:
+       v1_rollback_weight:
+         type: string
+       v2_rollback_weight:
+         type: string
+     steps:
+       - checkout
        - run:
-           name: wait for v2 rollout
+           name: Install python
            command: |
-             kubectl rollout restart deployment/go-db-app-version02 -n default
+             cd k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts
+             sudo apt update
+             pip3 install requirements.txt
 
        - run:
-           name: Run canary evaluation
-           working_directory: k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts
+           name: Run checks
            command: |
-             sleep 30
              export PROMETHEUS_URL="http://10.1.1.7:9090"
-             python3 canary_check.py 
+             python3 go-db-application/k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts/canary_check.py
 
-  
+       - run:
+           name: Rollback to traffic v1
+           when: on_fail
+           command: |
+             echo "Rollback triggered"
+             cd argocd/version-specific-go-app/gateway
+
+             # Update weight for the first backend (v1)
+             yq -i '.spec.rules[0].backendRefs[0].weight == << parameters.v1_rollback_weight >>' httproute.yaml
+
+             # Update weight for the second backend (v2)
+             yq -i '.spec.rules[0].backendRefs[1].weight == << parameters.v2_rollback_weight >>' httproute.yaml
+
+             git config user.name "circleCI"
+             git config user.email "ci@circleci.com"
+             git add .
+             git commit -m "Rollback to v1" || true
+             git push origin feature/circleci-metrics
+
+             exit 1
+      
+  promote:
+    executor: base
+    # Define the working directory so 'checkout' and 'run' are in the same place
+    working_directory: ~/project 
+    steps:
+      - checkout # Pulls the repo into ~/project
+      - run:
+          name: Promote v2 -> v1
+          command: |
+            cd argocd/version-specific-go-app/deployments
+            sed -i "s|image: anuroop21/go-app-circleci:.*|image: anuroop21/go-app-circleci:${CIRCLE_SHA1}|g" go-app-deployment-version01.yaml
+
+      - run:
+          name: Commit the changes
+          command: |
+            git config user.name "circleCI"
+            git config user.email "ci@circleci.com"
+
+            git add argocd/version-specific-go-app/deployments/go-app-deployment-version01.yaml
+            git commit -m "Promote v2 -> v1" || echo true
+            git push origin feature/circleci-metrics
+
 workflows:
   version: 2
   build_and_push:
@@ -184,6 +274,41 @@ workflows:
           requires:
             - docker-build-and-push
 
-      - wait_for_rollout:
+      - update_traffic:
+          name: traffic_10
+          v1: "90"
+          v2: "10"
+          requires: [update_gitops_dev]
+
+      - canary_check:
+          name: check_10
+          v1_rollback_traffic: "100"
+          v2_rollback_weight: "0"
           requires:
-            - update_gitops_dev
+            - traffic_10
+
+
+      - update_traffic:
+          name: traffic_50
+          v1: "50"
+          v2: "50"
+          requires:
+            - check_10
+
+      - canary_check:
+          name: check_50
+          v1_rollback_weight: "100"
+          v2_rollback_weight: "0"
+          requires:
+            - traffic_50
+
+      - update_traffic:
+          name: traffic_100
+          v1: "0"
+          v2: "100"
+          requires:
+            - check_50
+
+      - promote:
+          requires:
+            - traffic_100
