@@ -197,6 +197,7 @@ jobs:
        - run:
            name: Run checks
            command: |
+             sleep 300s
              export PROMETHEUS_URL="http://10.1.1.7:9090"
              python3 k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts/canary_check.py
 
@@ -255,11 +256,12 @@ jobs:
             git reset --mixed origin/feature/circleci-metrics
             
             sed -i "s|image: anuroop21/go-app-circleci:.*|image: anuroop21/go-app-circleci:${CIRCLE_SHA1}|g" go-app-deployment-version01.yaml
+            
             git config user.name "circleCI"
             git config user.email "ci@circleci.com"
 
-            git commit -m "Promote v2 -> v1 [skip ci]" || echo true
-
+            git add go-app-deployment-version01.yaml
+            
             if ! git diff --cached --quiet; then
                git commit -m "Promote v2 -> v1 [skip ci]" || true
                git push origin feature/circleci-metrics --force-with-lease
