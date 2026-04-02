@@ -52,12 +52,9 @@ jobs:
     working_directory: ~/project
     steps:
       - checkout
-      - setup_remote_docker:
-          docker_layer_caching: true
       - run:
           name: Build, Scan, and Push
           command: |
-            curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
             # Login into Azure
             az login --service-principal -u "$AZURE_CLIENT_ID" -t "$AZURE_TENANT_ID" --federated-token "$CIRCLE_OIDC_TOKEN_V2"
@@ -179,14 +176,13 @@ jobs:
             git push origin feature/circleci-metrics
 
   create_staging_pr:
-    executor: base
+    executor: azure_self_runner  # Again, Azure keyVault access allowed only from the self hosted runner subnet
     working_directory: ~/project
     steps:
       - checkout
       - run:
           name: Create Staging Promotion PR via API
           command: |
-            curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
             # Login into Azure
             az login --service-principal -u "$AZURE-CLIENT-ID" -t "$AZURE-TENANT-ID" --federated-token "$CIRCLE_OIDC_TOKEN_V2"
