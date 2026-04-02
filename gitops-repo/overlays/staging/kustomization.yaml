@@ -28,3 +28,14 @@ patches:
         path: /spec/template/spec/containers/0/image
         value: anuroop21/go-app-circleci:TAG_FROM_CI  # CircleCI PR job replaces this
 
+  - target:
+      kind: HTTPRoute
+      name: go-app-route-canary-route-staging
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/backendRefs/0/weight
+        value: 100
+
+      - op: 
+        path: /spec/rules/0/backendRefs/1/weight
+        value: 0
