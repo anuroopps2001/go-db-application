@@ -57,6 +57,14 @@ jobs:
       - run:
           name: Build, Scan, and Push
           command: |
+            curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+            # Login into Azure
+            az login --service-principal -u "$AZURE-CLIENT-ID" -t "$AZURE-TENANT-ID" --federated-token "$CIRCLE_OIDC_TOKEN_V2"
+
+            DOCKERHUB_PASS=$(az keyvault secret show --name "DOCKERHUB-PASS" --vault-name "kv-aks-gitops-prod" --query value -o tsv)
+            DOCKERHUB_USER=$(az keyvault secret show --name "DOCKERHUB-USER" --vault-name "kv-aks-gitops-prod" --query value -o tsv)
+
             docker build -f Docker/Dockerfile -t $DOCKERHUB_USER/go-app-circleci:${CIRCLE_SHA1} .
             # Install Trivy
             curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
@@ -178,6 +186,13 @@ jobs:
       - run:
           name: Create Staging Promotion PR via API
           command: |
+            curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+            # Login into Azure
+            az login --service-principal -u "$AZURE-CLIENT-ID" -t "$AZURE-TENANT-ID" --federated-token "$CIRCLE_OIDC_TOKEN_V2"
+
+            GITHUB_TOKEN=$(az keyvault secret show --name "GITHUB-TOKEN" --vault-name "kv-aks-gitops-prod" --query value -o tsv)
+
             git config user.email "ci@circle.com"
             git config user.name "circleci"
             
