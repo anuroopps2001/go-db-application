@@ -127,7 +127,7 @@ jobs:
       - run:
           name: Prometheus SLO Check
           command: |
-            sleep 300s
+            sleep 30s
             export PROMETHEUS_URL="http://10.1.1.7:9090"
             python3 k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts/canary_check.py
       - run:
@@ -160,7 +160,9 @@ jobs:
 
             # Target only the version01 block and update its image to the current SHA 100% tested version02 
             sed -i "/go-db-app-version01/,/value:/ s|value: .*|value: anuroop21/go-app-circleci:${CIRCLE_SHA1}|" kustomization.yaml
-          
+            
+            sed -i "/backendRefs\/0/,/value:/ s|value: .*|value: 100|" kustomization.yaml
+            sed -i "/backendRefs\/1/,/value:/ s|value: .*|value: 0|" kustomization.yaml
 
             git config user.name "circleCI"
             git config user.email "ci@circleci.com"
@@ -192,11 +194,11 @@ jobs:
             
             # Also, ensure weights in Staging are reset for the new test (e.g., 90/10
             sed -i "/backendRefs\/0/,/value:/ s|value: .*|value: 90|" kustomization.yaml
-            sed -i "/backendRefs\/1/,/value:/ s|value: .*|value: 90|" kustomization.yaml
+            sed -i "/backendRefs\/1/,/value:/ s|value: .*|value: 10|" kustomization.yaml
             
             git add kustomization.yaml
             git commit -m "Promote to Staging: ${CIRCLE_SHA1} [skip ci]"
-            git push origin $BRANCH_NAME
+            git push -f origin $BRANCH_NAME
             
             # GitHub CLI creates the PR (Ensure GITHUB_TOKEN is in Env Vars)
             curl -L \
@@ -276,6 +278,7 @@ workflows:
           requires: [approve_100]
 
       - promote:
+          type: approval
           requires: [traffic_100]
 
       - approve_staging:
