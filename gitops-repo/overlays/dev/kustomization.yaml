@@ -18,7 +18,7 @@ patches:
     patch: |-
       - op: replace
         path: /spec/template/spec/containers/0/image
-        value: anuroop21/go-app-circleci:ef89658572f08899eb95a322e41aa205a953f38d
+        value: anuroop21/go-app-circleci:ef89658572f08899eb95a322e41aa205a953f38d  # Keep any old stable tags
 
   - target:
       kind: Deployment
@@ -34,8 +34,8 @@ patches:
     patch: |-
       - op: replace
         path: /spec/rules/0/backendRefs/0/weight
-        value: V1_WEIGHT_PH
+        value: 100  # Circleci will update this place_holder
 
       - op: replace
         path: /spec/rules/0/backendRefs/1/weight
-        value: V2_WEIGHT_PH
+        value: 0  # Circleci will update this place_holder

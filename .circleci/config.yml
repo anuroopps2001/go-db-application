@@ -79,10 +79,10 @@ jobs:
           name: Update Kustomize Dev Overlay
           command: |
             cd gitops-repo/overlays/dev
-            sed -i "s|TAG_FROM_CI|${CIRCLE_SHA1}|g" kustomization.yaml
+            sed -i "/go-db-app-version02/,/value:/ s|value: .*|value: anuroop21/go-app-circleci:${CIRCLE_SHA1}|" kustomization.yaml   # update version deployment with the newly built tag
 
-            sed -i "s|V1_WEIGHT_PH|<< parameters.v1_weight >>|g" kustomization.yaml
-            sed -i "s|V2_WEIGHT_PH|<< parameters.v2_weight >>|g" kustomization.yaml
+            sed -i "/go-db-service-sample-version-01/,/weight:/ s|weight: .*|weight: << parameters.v1_weight >>|" kustomization.yaml
+            sed -i "/go-db-service-sample-version-02/,/weight:/ s|weight: .*|weight: << parameters.v2_weight >>|" kustomization.yaml
 
             git fetch origin feature/circleci-metrics
             git reset --mixed origin/feature/circleci-metrics
@@ -129,10 +129,10 @@ jobs:
           name: Rollback on Failure
           when: on_fail
           command: |
-          
-            # Standard Git Rollback logic using yq
-            yq -i ".spec.rules[0].backendRefs[0].weight = << parameters.v1_rollback_weight >>" argocd/version-specific-go-app/gateway/httproute.yaml
-            yq -i ".spec.rules[0].backendRefs[1].weight = << parameters.v2_rollback_weight >>" argocd/version-specific-go-app/gateway/httproute.yaml
+            cd gitops-repo/overlays/dev
+            # Standard Git Rollback logic using sed
+            sed -i "/go-db-service-sample-version-01/,/weight:/ s|weight: .*|weight: 100|" kustomization.yaml
+            sed -i "/go-db-service-sample-version-02/,/weight:/ s|weight: .*|weight: 0|" kustomization.yaml
 
             git config user.name "circleCI"
             git config user.email "ci@circleci.com"
@@ -149,13 +149,13 @@ jobs:
           name: Shift Stable Image (v2 -> v1)
           command: |
             cd gitops-repo/overlays/dev
-            
-            # Target only the version01 block and update its image to the current SHA 100% tested version02 
-            sed -i "/go-db-app-version01/,/value:/ s|value: .*|value: anuroop21/go-app-circleci:${CIRCLE_SHA1}|" kustomization.yaml
-            
 
             git fetch origin feature/circleci-metrics
             git reset --mixed origin/feature/circleci-metrics
+              
+            # Target only the version01 block and update its image to the current SHA 100% tested version02 
+            sed -i "/go-db-app-version01/,/value:/ s|value: .*|value: anuroop21/go-app-circleci:${CIRCLE_SHA1}|" kustomization.yaml
+          
 
             git config user.name "circleCI"
             git config user.email "ci@circleci.com"
