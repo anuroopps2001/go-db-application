@@ -27,3 +27,15 @@ patches:
       - op: replace
         path: /spec/template/spec/containers/0/image
         value: anuroop21/go-app-circleci:TAG_FROM_CI
+
+  - target:
+      kind: HTTPRoute
+      name: go-app-route-canary-route
+    path: |-
+      - op: replace
+        path: /spec/backendRefs/0/weight
+        value: V1_WEIGHT_PH
+
+      - op: 
+        path: /spec/backendRefs/1/weight
+        value: value: V2_WEIGHT_PH

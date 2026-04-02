@@ -81,6 +81,9 @@ jobs:
             cd gitops-repo/overlays/dev
             sed -i "s|TAG_FROM_CI|${CIRCLE_SHA1}|g" kustomization.yaml
 
+            sed -i "s|V1_WEIGHT_PH|<< parameter.v1_weight >>|g" kustomization.yaml
+            sed -i "s|V2_WEIGHT_PH|<< parameter.v2_weight >>|g" kustomization.yaml
+
             git fetch origin feature/circleci-metrics
             git reset --mixed origin/feature/circleci-metrics
             
@@ -91,7 +94,7 @@ jobs:
             
             # Only commit if changes exist to avoid empty commit errors
             if ! git diff --cached --quiet; then
-              git commit -m "Update Dev Canary to ${CIRCLE_SHA1} [skip ci]"
+              git commit -m "Update Traffic from {parameter.v1_weight} to {parameter.v2_weight} [skip ci]"
               git push origin feature/circleci-metrics
             else
               echo "No changes detected, skipping push."
@@ -126,9 +129,11 @@ jobs:
           name: Rollback on Failure
           when: on_fail
           command: |
+          
             # Standard Git Rollback logic using yq
             yq -i ".spec.rules[0].backendRefs[0].weight = << parameters.v1_rollback_weight >>" argocd/version-specific-go-app/gateway/httproute.yaml
             yq -i ".spec.rules[0].backendRefs[1].weight = << parameters.v2_rollback_weight >>" argocd/version-specific-go-app/gateway/httproute.yaml
+
             git config user.name "circleCI"
             git config user.email "ci@circleci.com"
             git add argocd/version-specific-go-app/gateway/httproute.yaml
