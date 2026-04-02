@@ -94,7 +94,7 @@ jobs:
             
             # Only commit if changes exist to avoid empty commit errors
             if ! git diff --cached --quiet; then
-              git commit -m "Update Traffic from {parameters.v1_weight} to {parameters.v2_weight} [skip ci]"
+              git commit -m "Update Traffic from << parameters.v1_weight >> to << parameters.v2_weight >> [skip ci]"
               git push origin feature/circleci-metrics
             else
               echo "No changes detected, skipping push."
@@ -153,8 +153,6 @@ jobs:
             # Target only the version01 block and update its image to the current SHA 100% tested version02 
             sed -i "/go-db-app-version01/,/value:/ s|value: .*|value: anuroop21/go-app-circleci:${CIRCLE_SHA1}|" kustomization.yaml
             
-            # Reset the version02 placeholder so the next pipeline starts fresh
-            sed -i "/go-db-app-version02/,/value:/ s|value: .*|value: anuroop21/go-app-circleci:TAG_FROM_CI|" kustomization.yaml
 
             git fetch origin feature/circleci-metrics
             git reset --mixed origin/feature/circleci-metrics
@@ -162,7 +160,7 @@ jobs:
             git config user.name "circleCI"
             git config user.email "ci@circleci.com"
             git add kustomization.yaml
-            git commit -m "Promote: ${CIRCLE_SHA1} is now the stable Version 01 [skip ci]"
+            git commit -m "Promote: ${CIRCLE_SHA1} moved to v1 [skip ci]"
             git push origin feature/circleci-metrics
 
   create_staging_pr:
