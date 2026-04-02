@@ -79,10 +79,15 @@ jobs:
           name: Update Kustomize Dev Overlay
           command: |
             cd gitops-repo/overlays/dev
+
+            git fetch origin feature/circleci-metrics
+            git reset --mixed origin/feature/circleci-metrics
+
+            
             sed -i "/go-db-app-version02/,/value:/ s|value: .*|value: anuroop21/go-app-circleci:${CIRCLE_SHA1}|" kustomization.yaml   # update version deployment with the newly built tag
 
-            sed -i "/ go-app-route-canary-route/,/weight:/ s|weight: .*|weight: << parameters.v1_weight >>|" kustomization.yaml
-            sed -i "/ go-app-route-canary-route/,/weight:/ s|weight: .*|weight: << parameters.v2_weight >>|" kustomization.yaml
+            sed -i "/backendRefs\/0/,/value:/ s|value: .*|value: << parameters.v1_weight >>|" kustomization.yaml
+            sed -i "/backendRefs\/1/,/value:/ s|value: .*|value: << parameters.v2_weight >>|" kustomization.yaml
 
             git fetch origin feature/circleci-metrics
             git reset --mixed origin/feature/circleci-metrics
