@@ -60,7 +60,7 @@ jobs:
             curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
             # Login into Azure
-            az login --service-principal -u "$AZURE-CLIENT-ID" -t "$AZURE-TENANT-ID" --federated-token "$CIRCLE_OIDC_TOKEN_V2"
+            az login --service-principal -u "$AZURE_CLIENT_ID" -t "$AZURE_TENANT_ID" --federated-token "$CIRCLE_OIDC_TOKEN_V2"
 
             DOCKERHUB_PASS=$(az keyvault secret show --name "DOCKERHUB-PASS" --vault-name "kv-aks-gitops-prod" --query value -o tsv)
             DOCKERHUB_USER=$(az keyvault secret show --name "DOCKERHUB-USER" --vault-name "kv-aks-gitops-prod" --query value -o tsv)
