@@ -31,7 +31,7 @@ patches:
   - target:
       kind: HTTPRoute
       name: go-app-route-canary-route
-    path: |-
+    patch: |-
       - op: replace
         path: /spec/backendRefs/0/weight
         value: V1_WEIGHT_PH
