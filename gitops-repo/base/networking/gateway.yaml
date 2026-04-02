@@ -2,7 +2,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   name: nginx-gateway-for-all
-  namespace: nginx-gateway
+  namespace: go-db-app-dev
 spec:
   gatewayClassName: nginx
   listeners:
