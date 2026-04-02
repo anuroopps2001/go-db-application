@@ -81,8 +81,8 @@ jobs:
             cd gitops-repo/overlays/dev
             sed -i "/go-db-app-version02/,/value:/ s|value: .*|value: anuroop21/go-app-circleci:${CIRCLE_SHA1}|" kustomization.yaml   # update version deployment with the newly built tag
 
-            sed -i "/go-db-service-sample-version-01/,/weight:/ s|weight: .*|weight: << parameters.v1_weight >>|" kustomization.yaml
-            sed -i "/go-db-service-sample-version-02/,/weight:/ s|weight: .*|weight: << parameters.v2_weight >>|" kustomization.yaml
+            sed -i "/ go-app-route-canary-route/,/weight:/ s|weight: .*|weight: << parameters.v1_weight >>|" kustomization.yaml
+            sed -i "/ go-app-route-canary-route/,/weight:/ s|weight: .*|weight: << parameters.v2_weight >>|" kustomization.yaml
 
             git fetch origin feature/circleci-metrics
             git reset --mixed origin/feature/circleci-metrics
@@ -152,7 +152,7 @@ jobs:
 
             git fetch origin feature/circleci-metrics
             git reset --mixed origin/feature/circleci-metrics
-              
+
             # Target only the version01 block and update its image to the current SHA 100% tested version02 
             sed -i "/go-db-app-version01/,/value:/ s|value: .*|value: anuroop21/go-app-circleci:${CIRCLE_SHA1}|" kustomization.yaml
           
