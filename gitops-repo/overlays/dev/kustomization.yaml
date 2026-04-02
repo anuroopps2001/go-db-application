@@ -36,6 +36,6 @@ patches:
         path: /spec/backendRefs/0/weight
         value: V1_WEIGHT_PH
 
-      - op: 
+      - op: replace
         path: /spec/backendRefs/1/weight
         value: value: V2_WEIGHT_PH
