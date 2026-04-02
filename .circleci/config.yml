@@ -81,8 +81,8 @@ jobs:
             cd gitops-repo/overlays/dev
             sed -i "s|TAG_FROM_CI|${CIRCLE_SHA1}|g" kustomization.yaml
 
-            sed -i "s|V1_WEIGHT_PH|<< parameter.v1_weight >>|g" kustomization.yaml
-            sed -i "s|V2_WEIGHT_PH|<< parameter.v2_weight >>|g" kustomization.yaml
+            sed -i "s|V1_WEIGHT_PH|<< parameters.v1_weight >>|g" kustomization.yaml
+            sed -i "s|V2_WEIGHT_PH|<< parameters.v2_weight >>|g" kustomization.yaml
 
             git fetch origin feature/circleci-metrics
             git reset --mixed origin/feature/circleci-metrics
@@ -94,7 +94,7 @@ jobs:
             
             # Only commit if changes exist to avoid empty commit errors
             if ! git diff --cached --quiet; then
-              git commit -m "Update Traffic from {parameter.v1_weight} to {parameter.v2_weight} [skip ci]"
+              git commit -m "Update Traffic from {parameters.v1_weight} to {parameters.v2_weight} [skip ci]"
               git push origin feature/circleci-metrics
             else
               echo "No changes detected, skipping push."
