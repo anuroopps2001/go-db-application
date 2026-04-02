@@ -33,9 +33,9 @@ patches:
       name: go-app-route-canary-route
     patch: |-
       - op: replace
-        path: /spec/backendRefs/0/weight
+        path: /spec/rules/0/backendRefs/0/weight
         value: V1_WEIGHT_PH
 
       - op: replace
-        path: /spec/backendRefs/1/weight
+        path: /spec/rules/0/backendRefs/1/weight
         value: V2_WEIGHT_PH
