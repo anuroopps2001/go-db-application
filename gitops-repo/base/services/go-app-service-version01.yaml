@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: go-db-service-sample-version-01
+  labels:
+    app: go-db-service-sample
+    version: "01"
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: "8080"
+spec:
+  selector:
+    app: go-db
+    version: "01"
+  type: ClusterIP
+  ports:
+  - name: http
+    protocol: TCP
+    port: 8080
+    targetPort: 8080 
+    # If you set the `spec.type` field to `NodePort` and you want a specific port number,
+    # you can specify a value in the `spec.ports[*].nodePort` field.
