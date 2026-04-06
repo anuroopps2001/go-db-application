@@ -196,7 +196,7 @@ jobs:
           command: |
 
             # Login into Azure
-            az login --service-principal -u "$AZURE-CLIENT-ID" -t "$AZURE-TENANT-ID" --federated-token "$CIRCLE_OIDC_TOKEN_V2"
+            az login --service-principal -u "$AZURE_CLIENT_ID" -t "$AZURE_TENANT_ID" --federated-token "$CIRCLE_OIDC_TOKEN_V2"
 
             GITHUB_TOKEN=$(az keyvault secret show --name "GITHUB-TOKEN" --vault-name "kv-aks-gitops-prod" --query value -o tsv)
 
