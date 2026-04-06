@@ -90,7 +90,11 @@ jobs:
             git fetch origin << parameters.branch >>
             git reset --mixed origin/<< parameters.branch >>
 
-            
+            if [ << parameters.env == "staging" ] && [ "$CIRCLE_BRANCH" != "staging" ]; then
+               echo "Skipping: not staging branch"
+               exit 0
+            fi
+
             sed -i "/go-db-app-version02/,/value:/ s|value: .*|value: anuroop21/go-app-circleci:${CIRCLE_SHA1}|" kustomization.yaml   # update version deployment with the newly built tag
 
             sed -i "/backendRefs\/0/,/value:/ s|value: .*|value: << parameters.v1_weight >>|" kustomization.yaml
@@ -330,8 +334,6 @@ workflows:
 
 # --- STAGING WORKFLOW ---
   build_and_deploy_staging:
-    when:
-      equal: [ "staging", << pipeline.git.branch >> ]
     jobs:
       - update_traffic:
           name: "staging_traffic_10"
@@ -339,9 +341,6 @@ workflows:
           branch: "staging"
           v1_weight: "90"
           v2_weight: "10"
-          filters:
-            branches:
-              only: staging
 
       - wait_for_rollout:
           name: "staging_wait_10"
@@ -396,9 +395,5 @@ workflows:
           env: "staging"
           branch: "staging"
           requires: [staging_approve_promotion]
-
-  debug_pipeline:
-    jobs:
-      - build
 
       
