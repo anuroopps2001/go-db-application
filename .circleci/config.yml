@@ -18,6 +18,10 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Debug branch
+          command: |
+            echo "CIRCLE_BRANCH=$CIRCLE_BRANCH"
+      - run:
           name: Build application
           working_directory: go-application
           command: |
@@ -341,6 +345,10 @@ workflows:
           branch: "staging"
           v1_weight: "90"
           v2_weight: "10"
+          filters:
+            branches:
+              ignore:
+                - feature/*
 
       - wait_for_rollout:
           name: "staging_wait_10"
