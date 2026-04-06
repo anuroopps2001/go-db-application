@@ -94,11 +94,6 @@ jobs:
             git fetch origin << parameters.branch >>
             git reset --mixed origin/<< parameters.branch >>
 
-            if [ "<< parameters.env >>" == "staging" ] && [ "$CIRCLE_BRANCH" != "staging" ]; then
-               echo "Skipping: not staging branch"
-               exit 0
-            fi
-
             sed -i "/go-db-app-version02/,/value:/ s|value: .*|value: anuroop21/go-app-circleci:${CIRCLE_SHA1}|" kustomization.yaml   # update version deployment with the newly built tag
 
             sed -i "/backendRefs\/0/,/value:/ s|value: .*|value: << parameters.v1_weight >>|" kustomization.yaml
