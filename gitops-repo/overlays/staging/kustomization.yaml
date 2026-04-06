@@ -24,7 +24,7 @@ patches:
     patch: |-
       - op: replace
         path: /spec/template/spec/containers/0/image
-        value: anuroopps2001/go-app-circleci:23034f5a4e18a04984d83125176ca2fbb75107d7  # Version 01 will be having tested image
+        value: anuroopps21/go-app-circleci:23034f5a4e18a04984d83125176ca2fbb75107d7  # Version 01 will be having tested image
       - op: replace
         path: /spec/replicas
         value: 3 # Higher replica count of tested image for staging tests
