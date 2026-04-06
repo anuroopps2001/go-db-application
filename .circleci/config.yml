@@ -90,7 +90,7 @@ jobs:
             git fetch origin << parameters.branch >>
             git reset --mixed origin/<< parameters.branch >>
 
-            if [ << parameters.env == "staging" ] && [ "$CIRCLE_BRANCH" != "staging" ]; then
+            if [ "<< parameters.env >>" == "staging" ] && [ "$CIRCLE_BRANCH" != "staging" ]; then
                echo "Skipping: not staging branch"
                exit 0
             fi
