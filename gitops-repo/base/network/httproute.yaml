@@ -10,7 +10,7 @@ spec:
     name: nginx-gateway-for-all
     namespace: go-db-app-dev  # Because only one gateway per cluster is allowed
   hostnames:
-    - go.app.version.split..staging.local
+    - go.app.version.split.staging.local
   rules:
     - matches:
         - path:
