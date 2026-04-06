@@ -36,7 +36,7 @@ patches:
     patch: |-
       - op: replace
         path: /spec/template/spec/containers/0/image
-        value: anuroop21/go-app-circleci:12c10729d75a6438583fbef0a91118f5a94dec49
+        value: anuroop21/go-app-circleci:ba396be6223f8f5f3b7a88dafe76c92e9cfaa3bf
 
   - target:
       kind: HTTPRoute
