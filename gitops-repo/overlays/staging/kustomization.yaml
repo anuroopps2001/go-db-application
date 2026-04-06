@@ -7,6 +7,16 @@ resources:
   
 namespace: go-db-app-staging
 
+
+configMapGenerator:
+  - name: staging-grafana-dashboards
+    files:
+      - monitoring/dev-app-canary-slo.json
+    options:
+      labels:
+        grafana_dashboard: "1"  # This should match the grafana side label and labelValues Part in k8s.
+
+
 patches:
   - target:
       kind: Deployment
@@ -26,7 +36,7 @@ patches:
     patch: |-
       - op: replace
         path: /spec/template/spec/containers/0/image
-        value: anuroop21/go-app-circleci:fbf3bf1faed601ad5424d87e16766b5983168b72  # Version 2 tested in dev environment
+        value: anuroop21/go-app-circleci:fbf3bf1faed601ad5424d87e16766b5983168b72  # Version "2" tested in dev environment
 
   - target:
       kind: HTTPRoute
