@@ -18,7 +18,7 @@ patches:
     patch: |-
       - op: replace
         path: /spec/template/spec/containers/0/image
-        value: anuroop21/go-app-circleci:ef89658572f08899eb95a322e41aa205a953f38d  # Keep any old stable tags
+        value: anuroop21/go-app-circleci:1082b3caf75628e5c225b2ca6130cc64e344e454
 
   - target:
       kind: Deployment
@@ -26,7 +26,7 @@ patches:
     patch: |-
       - op: replace
         path: /spec/template/spec/containers/0/image
-        value: anuroop21/go-app-circleci:1082b3caf75628e5c225b2ca6130cc64e344e454
+        value: anuroop21/go-app-circleci:ef89658572f08899eb95a322e41aa205a953f38d
 
   - target:
       kind: HTTPRoute
@@ -34,8 +34,8 @@ patches:
     patch: |-
       - op: replace
         path: /spec/rules/0/backendRefs/0/weight
-        value: 0
+        value: 100
 
       - op: replace
         path: /spec/rules/0/backendRefs/1/weight
-        value: 100
+        value: 0
