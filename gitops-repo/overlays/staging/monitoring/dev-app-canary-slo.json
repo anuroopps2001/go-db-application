@@ -1,161 +1,202 @@
 {
-  "id": 1,
-  "type": "timeseries",
-  "title": "New panel",
-  "gridPos": {
-    "x": 0,
-    "y": 0,
-    "h": 8,
-    "w": 12
-  },
-  "fieldConfig": {
-    "defaults": {
-      "custom": {
-        "drawStyle": "line",
-        "lineInterpolation": "smooth",
-        "barAlignment": 0,
-        "barWidthFactor": 0.6,
-        "lineWidth": 1,
-        "fillOpacity": 0,
-        "gradientMode": "none",
-        "spanNulls": false,
-        "insertNulls": false,
-        "showPoints": "auto",
-        "showValues": false,
-        "pointSize": 5,
-        "stacking": {
-          "mode": "none",
-          "group": "A"
-        },
-        "axisPlacement": "auto",
-        "axisLabel": "",
-        "axisColorMode": "text",
-        "axisBorderShow": false,
-        "scaleDistribution": {
-          "type": "linear"
-        },
-        "axisCenteredZero": false,
-        "hideFrom": {
-          "tooltip": false,
-          "viz": false,
-          "legend": false
-        },
-        "thresholdsStyle": {
-          "mode": "off"
-        }
-      },
-      "color": {
-        "mode": "palette-classic"
-      },
-      "mappings": [],
-      "thresholds": {
-        "mode": "absolute",
-        "steps": [
-          {
-            "color": "green",
-            "value": null
-          },
-          {
-            "color": "red",
-            "value": 80
-          }
-        ]
-      },
-      "max": 100,
-      "min": 0
-    },
-    "overrides": [
+  "annotations": {
+    "list": [
       {
-        "matcher": {
-          "id": "byName",
-          "options": "ErrorRate-v02"
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
         },
-        "properties": [
-          {
-            "id": "color",
-            "value": {
-              "mode": "fixed",
-              "fixedColor": "red"
-            }
-          }
-        ]
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
       }
     ]
   },
-  "pluginVersion": "12.4.2",
-  "targets": [
-    {
-      "editorMode": "code",
-      "expr": "(\n  (\n    sum by (version) (irate(http_requests_total{version!=\"\"}[30s]))\n    / \n    ignoring(version) group_left() sum(irate(http_requests_total{version!=\"\"}[30s]))\n  ) * 100\n) \nand on() (sum(irate(http_requests_total[30s])) > 0.5) or (sum by (version) (http_requests_total * 0))",
-      "legendFormat": "requestrate -v{{ version }}",
-      "range": true,
-      "refId": "A"
-    },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
     {
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "editorMode": "code",
-      "expr": "histogram_quantile(0.95, sum by (le, version) (rate(http_request_duration_seconds_bucket[1m])))",
-      "instant": false,
-      "legendFormat": "p95 Latency-v{{version}}",
-      "range": true,
-      "refId": "C"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ErrorRate-v02"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
       },
-      "editorMode": "code",
-      "expr": "(\n  (\n    sum by (version) (rate(http_requests_total{version!=\"\", path!~\"/healthz|/ready\"}[5m]))\n    / \n    ignoring(version) group_left() sum(rate(http_requests_total{version!=\"\", path!~\"/healthz|/ready\"}[5m]))\n  ) * 100\n) and on() (sum(irate(http_requests_total[30s])) > 0.5) or (sum by (version) (http_requests_total * 0))\n",
-      "instant": false,
-      "legendFormat": "ActualReq-v{{version}}",
-      "range": true,
-      "refId": "D"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
       },
-      "editorMode": "code",
-      "expr": "(\n  sum by (version) (rate(http_requests_total{status=~\"4.*|5.*\"}[1m]))\n  /\n  sum by (version) (rate(http_requests_total[1m]))\n) * 100 or (sum by (version) (http_requests_total * 0))",
-      "instant": false,
-      "legendFormat": "ErrorRate-v{{version}}",
-      "range": true,
-      "refId": "E"
-    },
-    {
-      "refId": "B",
-      "expr": "sum by (version) (rate(http_requests_total{statis=~\"4..|5..\", version=\"02\"}[1m])) / sum by (version) (rate(http_requests_total{version=\"02\"}[1m])) * 100 or (sum by (version) (http_requests_total{version=\"02\"} * 0))",
-      "range": true,
-      "instant": false,
-      "datasource": {
-        "uid": "prometheus",
-        "type": "prometheus"
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
       },
-      "hide": true,
-      "editorMode": "code",
-      "legendFormat": "ErrorRate-v02"
+      "pluginVersion": "12.4.2",
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "(\n  (\n    sum by (version) (irate(http_requests_total{version!=\"\"}[30s]))\n    / \n    ignoring(version) group_left() sum(irate(http_requests_total{version!=\"\"}[30s]))\n  ) * 100\n) \nand on() (sum(irate(http_requests_total[30s])) > 0.5) or (sum by (version) (http_requests_total * 0))",
+          "legendFormat": "requestrate -v{{ version }}",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum by (le, version) (rate(http_request_duration_seconds_bucket[1m])))",
+          "instant": false,
+          "legendFormat": "p95 Latency-v{{version}}",
+          "range": true,
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(\n  (\n    sum by (version) (rate(http_requests_total{version!=\"\", path!~\"/healthz|/ready\"}[5m]))\n    / \n    ignoring(version) group_left() sum(rate(http_requests_total{version!=\"\", path!~\"/healthz|/ready\"}[5m]))\n  ) * 100\n) and on() (sum(irate(http_requests_total[30s])) > 0.5) or (sum by (version) (http_requests_total * 0))\n",
+          "instant": false,
+          "legendFormat": "ActualReq-v{{version}}",
+          "range": true,
+          "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(\n  sum by (version) (rate(http_requests_total{status=~\"4.*|5.*\"}[1m]))\n  /\n  sum by (version) (rate(http_requests_total[1m]))\n) * 100 or (sum by (version) (http_requests_total * 0))",
+          "instant": false,
+          "legendFormat": "ErrorRate-v{{version}}",
+          "range": true,
+          "refId": "E"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (version) (rate(http_requests_total{statis=~\"4..|5..\", version=\"02\"}[1m])) / sum by (version) (rate(http_requests_total{version=\"02\"}[1m])) * 100 or (sum by (version) (http_requests_total{version=\"02\"} * 0))",
+          "hide": true,
+          "instant": false,
+          "legendFormat": "ErrorRate-v02",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "New panel",
+      "type": "timeseries"
     }
   ],
-  "datasource": {
-    "type": "prometheus",
-    "uid": "prometheus"
+  "preload": false,
+  "refresh": "5s",
+  "schemaVersion": 42,
+  "tags": [],
+  "templating": {
+    "list": []
   },
-  "options": {
-    "tooltip": {
-      "mode": "single",
-      "sort": "none",
-      "hideZeros": false
-    },
-    "legend": {
-      "showLegend": true,
-      "displayMode": "list",
-      "placement": "bottom",
-      "calcs": []
-    }
-  }
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "New dashboard",
+  "uid": "adfxfpd",
+  "version": 11,
+  "weekStart": ""
 }
