@@ -183,7 +183,10 @@ jobs:
             git reset --mixed origin/<< parameters.branch >>
 
             # Target only the version01 block and update its image to the current SHA 100% tested version02
-            sed -i '/name: go-db-app-version01/{n;s|value: .*|value: anuroop21/go-app-circleci:'"${CIRCLE_SHA1}"'|;}' kustomization.yaml
+            yq -i '
+            (.patches[] | select(.target.name == "go-db-app-version01") | .patch)
+            |= sub("value: .*"; "value: anuroop21/go-app-circleci:'"$CIRCLE_SHA1"'")
+            ' kustomization.yaml
 
             # Since the version1 is updated with the version2 tested image now, traffic also, will be 100 % at newly 
             sed -i "/backendRefs\/0/,/value:/ s|value: .*|value: 100|" kustomization.yaml
@@ -342,9 +345,9 @@ workflows:
           v2_weight: "10"
           filters:
             branches:
-              only:
+              only:  # runs only when something changes in "staging" or promotion branches
                 - staging
-                - /^promote-.*/
+                - promote*
 
       - wait_for_rollout:
           name: "staging_wait_10"
