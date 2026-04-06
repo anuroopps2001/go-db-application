@@ -128,6 +128,7 @@ jobs:
     parameters:
       v1_rollback_weight: { type: string }
       v2_rollback_weight: { type: string }
+      env: {type: string, default: "dev"}
       prom_url: {type: string, default: "http://10.1.1.7:9090"} # Default URL is of dev environment prometheus
       branch: {type: string, default: "feature/circleci-metrics"}
     steps:
