@@ -343,11 +343,11 @@ workflows:
           branch: "staging"
           v1_weight: "90"
           v2_weight: "10"
-          # filters:
-          #   branches:
-          #     only:  # runs only when something changes in "staging" or promotion branches
-          #       - staging
-          #       - promote*
+          filters:
+            branches:
+              only:  # runs only when something changes in "staging" or promotion branches
+                - staging
+                - promote*
 
       - wait_for_rollout:
           name: "staging_wait_10"
