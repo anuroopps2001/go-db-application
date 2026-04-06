@@ -140,6 +140,10 @@ jobs:
           when: on_fail
           command: |
             cd gitops-repo/overlays/dev
+
+            git fetch origin feature/circleci-metrics
+            git reset --mixed origin/feature/circleci-metrics
+
             # Standard Git Rollback logic using sed
             sed -i "/go-db-service-sample-version-01/,/weight:/ s|weight: .*|weight: 100|" kustomization.yaml
             sed -i "/go-db-service-sample-version-02/,/weight:/ s|weight: .*|weight: 0|" kustomization.yaml
@@ -147,8 +151,13 @@ jobs:
             git config user.name "circleCI"
             git config user.email "ci@circleci.com"
             git add kustomization.yaml
-            git commit -m "Rollback triggered [skip ci]"
-            git push origin feature/circleci-metrics
+            if ! git diff --cached --quiet; then
+              git commit -m "Rollback triggered [skip ci]"
+              git push origin feature/circleci-metrics
+            else
+              echo "No changes detected, skipping push."
+            fi
+              
 
   promote:
     executor: base
