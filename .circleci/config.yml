@@ -331,7 +331,7 @@ workflows:
 # --- STAGING WORKFLOW ---
   build_and_deploy_staging:
     when:
-      equal: [ "staging", << pipeline.get.branch >> ]
+      equal: [ "staging", << pipeline.git.branch >> ]
     jobs:
       - update_traffic:
           name: "staging_traffic_10"
