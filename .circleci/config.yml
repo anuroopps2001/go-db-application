@@ -107,7 +107,7 @@ jobs:
             # Only commit if changes exist to avoid empty commit errors
             if ! git diff --cached --quiet; then
               git commit -m "<< parameters.env >>: Traffic << parameters.v1_weight >>/<< parameters.v2_weight >> [skip ci]"
-              git push origin << parameters.branch >>
+              git push origin HEAD:<< parameters.branch >>
             else
               echo "No changes detected, skipping push."
             fi
@@ -160,7 +160,7 @@ jobs:
             git add kustomization.yaml
             if ! git diff --cached --quiet; then
               git commit -m "Rollback triggered in << parameters.env >> [skip ci]"
-              git push origin << parameters.branch >>
+              git push origin HEAD:<< parameters.branch >>
             else
               echo "No changes detected, skipping push."
             fi
@@ -193,7 +193,7 @@ jobs:
             git config user.email "ci@circleci.com"
             git add kustomization.yaml
             git commit -m "<< parameters.env >> Promotion: ${CIRCLE_SHA1} [skip ci]"
-            git push origin << parameters.branch >> 
+            git push origin HEAD:<< parameters.branch >> 
 
   create_staging_pr:
     executor: azure_self_runner  # Again, Azure keyVault access allowed only from the self hosted runner subnet
@@ -342,8 +342,9 @@ workflows:
           v2_weight: "10"
           filters:
             branches:
-              ignore:
-                - feature/*
+              only:
+                - staging
+                - /^promote-.*/
 
       - wait_for_rollout:
           name: "staging_wait_10"
