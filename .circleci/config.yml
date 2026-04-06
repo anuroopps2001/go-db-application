@@ -146,7 +146,7 @@ jobs:
 
             git config user.name "circleCI"
             git config user.email "ci@circleci.com"
-            git add argocd/version-specific-go-app/gateway/httproute.yaml
+            git add kustomization.yaml
             git commit -m "Rollback triggered [skip ci]"
             git push origin feature/circleci-metrics
 
