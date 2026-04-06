@@ -173,7 +173,7 @@ jobs:
             git reset --mixed origin/feature/circleci-metrics
 
             # Target only the version01 block and update its image to the current SHA 100% tested version02 
-            sed -i "/name: go-db-app-version01/,/name: go-db-app-version02/ s|value: .*|value: anuroop21/go-app-circleci:${CIRCLE_SHA1}|" kustomization.yaml
+            sed -i "/name: go-db-app-version01/ s|value: .*|value: anuroop21/go-app-circleci:${CIRCLE_SHA1}|" kustomization.yaml
             
 
             # Since the version1 is updated with the version2 tested image now, traffic also, will be 100 % at newly 
