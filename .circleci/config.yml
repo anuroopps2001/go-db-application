@@ -397,4 +397,8 @@ workflows:
           branch: "staging"
           requires: [staging_approve_promotion]
 
+  debug_pipeline:
+    jobs:
+      - build
+
       
