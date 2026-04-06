@@ -46,6 +46,6 @@ patches:
         path: /spec/rules/0/backendRefs/0/weight
         value: 90
 
-      - op: 
+      - op: replace
         path: /spec/rules/0/backendRefs/1/weight
         value: 10
