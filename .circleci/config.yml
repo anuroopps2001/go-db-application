@@ -299,14 +299,15 @@ workflows:
           v2_weight: "100"
           requires: [approve_100]
 
-      - request_promotion:  # This is the "Pause Button"
+      - approve_promotion:  # This is the "Pause Button"
           type: approval
           requires: [traffic_100]
 
       - promote:
-          requires: [request_promotion]
+          requires: [approve_promotion]
 
       - approve_staging:
+          type: approval
           requires: [promote]
 
       - create_staging_pr:
