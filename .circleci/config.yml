@@ -339,7 +339,7 @@ workflows:
           v2_weight: "10"
           filters:
             branches:
-              only: "staging"
+              only: staging
 
       - wait_for_rollout:
           name: "staging_wait_10"
