@@ -218,6 +218,15 @@ jobs:
     steps:
       - checkout 
       - run:
+          name: Install Kustomize CLI tool
+          command: |
+            curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+
+            # Move it to a directory in your PATH
+            sudo mv kustomize /usr/local/bin/
+            hash -r
+            kustomize version > /dev/null
+      - run:
           name: Shift Stable Image (v2 -> v1)
           command: |
             cd gitops-repo/overlays/<< parameters.env >>
@@ -228,6 +237,7 @@ jobs:
             if [ "<< parameters.env >>" == "dev" ]; then TAG="${CIRCLE_SHA1}"; else TAG="latest"; fi
             
             kustomize edit set image anuroop21/go-app-circleci=anuroop21/go-app-circleci:${TAG}
+            
 
             yq -i '
               (.patches[] | select(.target.name == "go-app-route-canary-route") | .patch) 
