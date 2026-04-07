@@ -94,8 +94,8 @@ jobs:
 
             # Move it to a directory in your PATH
             sudo mv kustomize /usr/local/bin/
-
-            kustmize version > /dev/null
+            hash -r
+            kustomize version > /dev/null
       - run:
           name: Update Kustomize Overlay
           command: |
