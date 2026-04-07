@@ -324,7 +324,7 @@ workflows:
           name: dev_check_10
           v1_rollback_weight: "100"
           v2_rollback_weight: "0"
-          prom_url: "http://10.1.1.7:9090"
+          prom_url: "https://go-app-prometheus-geacauf4ewaxgrd7.southindia.prometheus.monitor.azure.com"
           requires: [dev_wait_10]
       
       - dev_approve_50:
@@ -342,7 +342,7 @@ workflows:
           name: dev_check_50
           v1_rollback_weight: "100"
           v2_rollback_weight: "0"
-          prom_url: "http://10.1.1.7:9090"
+          prom_url: "https://go-app-prometheus-geacauf4ewaxgrd7.southindia.prometheus.monitor.azure.com"
           requires: [dev_traffic_50]
 
       - dev_approve_100:
@@ -396,7 +396,7 @@ workflows:
           name: staging_check_10
           v1_rollback_weight: "100"
           v2_rollback_weight: "0"
-          prom_url: "http://10.1.1.7:9090"
+          prom_url: "https://go-app-prometheus-geacauf4ewaxgrd7.southindia.prometheus.monitor.azure.com"
           requires: [staging_wait_10]
 
       - staging_approve_50:
@@ -416,7 +416,7 @@ workflows:
           v1_rollback_weight: "100"
           v2_rollback_weight: "0"
           branch: "staging"
-          prom_url: "http://10.1.1.7:9090"
+          prom_url: "https://go-app-prometheus-geacauf4ewaxgrd7.southindia.prometheus.monitor.azure.com"
           requires: [staging_traffic_50]
 
       - staging_approve_100:
