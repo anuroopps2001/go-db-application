@@ -151,7 +151,16 @@ jobs:
           command: |
             sleep 30s
             export PROMETHEUS_URL="<< parameters.prom_url >>"
+            
+            if [ "<< parameters.env >>" == "dev" ]; then
+                export TARGET_NAMESPACE="go-db-app-dev"
+            else
+                export TARGET_NAMESPACE="go-db-app-staging"
+            fi
+            
+            echo "Running Canary Check for Namespace: $TARGET_NAMESPACE"
             python3 k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts/canary_check.py
+            
       - run:
           name: Rollback on Failure
           when: on_fail
