@@ -149,7 +149,28 @@ jobs:
       - run:
           name: Prometheus SLO Check
           command: |
-            python3 -m pip install -r k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts/requirements.txt
+            # Define the modules we need to check
+            REQUIRED_MODULES=("azure.identity" "requests")
+            NEEDS_INSTALL=false
+
+            for module in "${REQUIRED_MODULES[@]}"; do
+              if ! python3 -c "import $module" &> /dev/null; then
+                echo "Module $module is missing."
+                NEEDS_INSTALL=true
+              else
+                echo "Module $module is already installed."
+              fi
+            done
+
+            if [ "$NEEDS_INSTALL" = true ]; then
+              echo "Installing missing dependencies from requirements.txt..."
+              # Using the --break-system-packages flag for modern Linux/PEP 668
+              python3 -m pip install --break-system-packages -r k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts/requirements.txt
+            else
+              echo "All dependencies satisfied. Skipping installation."
+            fi
+
+
             az login --service-principal -u "$AZURE_CLIENT_ID" -t "$AZURE_TENANT_ID" --federated-token "$CIRCLE_OIDC_TOKEN_V2"
 
             sleep 30s
