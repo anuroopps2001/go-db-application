@@ -1,13 +1,11 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-# This file tells ArgoCD: "Take everything in Base, but apply these Dev-specific rules."
 
-# Points to your newly organized base
 resources:
   - ../../base
-# Forces all resources (Deployments, Services, etc.) into the Dev namespace
+
 namespace: go-db-app-dev
-# Target ONLY v2 to give it the new image from CircleCI
+
 patches:
   - target:
       kind: Deployment
@@ -30,7 +28,6 @@ patches:
       - op: replace
         path: /spec/rules/0/backendRefs/0/weight
         value: 100
-
       - op: replace
         path: /spec/rules/0/backendRefs/1/weight
         value: 0
