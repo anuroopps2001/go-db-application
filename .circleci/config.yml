@@ -218,10 +218,7 @@ jobs:
             # Update v01 image to match currently tested v02 image
             if [ "<< parameters.env >>" == "dev" ]; then TAG="${CIRCLE_SHA1}"; else TAG="latest"; fi
             
-            yq -i '
-             (.patches[] | select(.target.name == "go-db-app-version01") | .patch) 
-             |= sub("value: .*"; "value: anuroop21/go-app-circleci:'"$TAG"'")
-             ' kustomization.yaml
+            yq -i "(.patches[] | select(.target.name == \"go-db-app-version01\") | .patch) |= sub(\"image\n.*value: .*\", \"image\n        value: anuroop21/go-app-circleci:$TAG\")" kustomization.yaml
 
             yq -i '
               (.patches[] | select(.target.name == "go-app-route-canary-route") | .patch) 
