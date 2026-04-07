@@ -373,6 +373,7 @@ workflows:
           name: staging_check_10
           v1_rollback_weight: "100"
           v2_rollback_weight: "0"
+          env: "staging"
           prom_url: "http://10.1.1.7:9090"
           requires: [staging_wait_10]
 
@@ -392,6 +393,7 @@ workflows:
           name: staging_check_50
           v1_rollback_weight: "100"
           v2_rollback_weight: "0"
+          env: "staging"
           branch: "staging"
           prom_url: "http://10.1.1.7:9090"
           requires: [staging_traffic_50]
