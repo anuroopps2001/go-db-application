@@ -6,21 +6,12 @@ resources:
 
 namespace: go-db-app-dev
 
+# Kustomize will find EVERY deployment using this image and update the tag
+images:
+  - name: anuroop21/go-app-circleci
+    newTag: "SET_BY_CIRCLECI" 
+
 patches:
-  - target:
-      kind: Deployment
-      name: go-db-app-version01
-    patch: |-
-      - op: replace
-        path: /spec/template/spec/containers/0/image
-        value: anuroop21/go-app-circleci:35d0689aa41bf3fa8974ffbdd7ead6179208320b
-  - target:
-      kind: Deployment
-      name: go-db-app-version02
-    patch: |-
-      - op: replace
-        path: /spec/template/spec/containers/0/image
-        value: anuroop21/go-app-circleci:ef89658572f08899eb95a322e41aa205a953f38d
   - target:
       kind: HTTPRoute
       name: go-app-route-canary-route

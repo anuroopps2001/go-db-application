@@ -102,7 +102,7 @@ jobs:
             fi
 
             # Using anuroopps2001 (Correct Registry)
-            kustomize edit set image anuroop21/go-app-circleci=anuroop21/go-app-circleci:${TAG}
+            sed -i "/go-db-app-version02/,/value:/ s|value: .*|value: anuroop21/go-app-circleci:${TAG}|" kustomization.yaml
 
             sed -i "/backendRefs\/0/,/value:/ s|value: .*|value: << parameters.v1_weight >>|" kustomization.yaml
             sed -i "/backendRefs\/1/,/value:/ s|value: .*|value: << parameters.v2_weight >>|" kustomization.yaml
@@ -218,7 +218,7 @@ jobs:
             # Update v01 image to match currently tested v02 image
             if [ "<< parameters.env >>" == "dev" ]; then TAG="${CIRCLE_SHA1}"; else TAG="latest"; fi
             
-            kustomize edit set image anuroop21/go-app-circleci=anuroop21/go-app-circleci:${TAG}
+            yq -i "(.patches[] | select(.target.name == \"go-db-app-version01\") | .patch) |= sub(\"image\n.*value: .*\", \"image\n        value: anuroop21/go-app-circleci:$TAG\")" kustomization.yaml
 
             yq -i '
               (.patches[] | select(.target.name == "go-app-route-canary-route") | .patch) 
