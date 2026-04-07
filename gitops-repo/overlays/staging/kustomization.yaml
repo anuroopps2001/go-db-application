@@ -1,22 +1,15 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-
-
 resources:
   - ../../base
-  
 namespace: go-db-app-staging
-
-
 configMapGenerator:
   - name: staging-grafana-dashboards
     files:
       - monitoring/dev-app-canary-slo.json
     options:
       labels:
-        grafana_dashboard: "1"  # This should match the grafana side label and labelValues Part in k8s.
-
-
+        grafana_dashboard: "1" # This should match the grafana side label and labelValues Part in k8s.
 patches:
   - target:
       kind: Deployment
@@ -28,7 +21,6 @@ patches:
       - op: replace
         path: /spec/replicas
         value: 3 # Higher replica count of tested image for staging tests
-
   # Update Version 02 (The "New" Version being promoted)
   - target:
       kind: Deployment
@@ -37,7 +29,6 @@ patches:
       - op: replace
         path: /spec/template/spec/containers/0/image
         value: anuroop21/go-app-circleci:latest
-
   - target:
       kind: HTTPRoute
       name: go-app-route-canary-route-staging
