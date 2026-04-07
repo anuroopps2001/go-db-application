@@ -2,20 +2,22 @@ import requests
 import sys
 import os
 
-
-base_url = os.getenv("PROMETHEUS_URL", "http://localhost:9090").rstrip('/')
-prometheus_url = f"{base_url}/api/v1/query"
+TARGET_NAMESPACE = os.getenv("TARGET_NAMESPACE", "go-db-app-dev")
+BASE_URL = os.getenv("PROMETHEUS_URL", "http://localhost:9090").rstrip('/')
+PROMETHEUS_URL = f"{BASE_URL}/api/v1/query"
 CANARY_VERSION= "02"
 ERROR_THRESHOLD=2.0
-LATENCY_THRESHOLD=0.1
+LATENCY_THRESHOLD=0.05
 
 def query_prometheus(query):
     try:
-        response = requests.get(prometheus_url, params={'query': query})
+        response = requests.get(PROMETHEUS_URL, params={'query': query})
         data = response.json()
         results = data.get('data', {}).get('result', []) # List of dictionaries
+        
         if not results:
             return 0.0
+        
         return float(results[0]['value'][1])
     
     except Exception as e:
@@ -29,19 +31,20 @@ def evaluate_query():
     # 1. Query Error Rate %
     error_query = f'''
     (
-     sum(rate(http_requests_total{{status=~"4..|5..",version="{CANARY_VERSION}"}}[5m]))
-     / 
-     sum(rate(http_requests_total{{version="{CANARY_VERSION}"}}[5m])
-    ) * 100) or vector(0)'''
+      sum(rate(http_requests_total{{namespace="{TARGET_NAMESPACE}", status=~"4..|5..", version="{CANARY_VERSION}"}}[5m]))
+      / 
+      (sum(rate(http_requests_total{{namespace="{TARGET_NAMESPACE}", version="{CANARY_VERSION}"}}[5m])) or vector(1))
+    ) * 100 or vector(0)'''
     error_rate = query_prometheus(error_query)
 
 
     # 2. Query P95 Latency (Seconds)
     latency_query = f'''
     histogram_quantile(0.95,
-       sum by (le) (
-       rate(http_request_duration_seconds_bucket{{version="{CANARY_VERSION}"}}[5m])
-    ))'''
+        sum by (le) (
+            rate(http_request_duration_seconds_bucket{{namespace="{TARGET_NAMESPACE}", version="{CANARY_VERSION}"}}[5m])
+        )
+    ) or vector(0)'''
     p95_latency = query_prometheus(latency_query)
 
     # --- EVALUATION ---
@@ -49,6 +52,7 @@ def evaluate_query():
         print(f"Failed to fetch metrics")
         sys.exit(1)
     
+    print(f"Current Environment: {TARGET_NAMESPACE}")
     print(f"Error Rate: {error_rate:.2f}% (Threshold: {ERROR_THRESHOLD}%)")
     print(f"P95 Latency: {p95_latency:.3f} (Threshold: {LATENCY_THRESHOLD}s)")
 
@@ -63,9 +67,9 @@ def evaluate_query():
     else:
         print("\nResult: FAIL")
         if not error_pass: 
-            print("- Reason: Error rate too high")
+            print(f"- Reason: Error rate ({error_rate:.2f}%) exceeds threshold")
         if not latency_pass: 
-            print("- Reason: Latency exceeds threshold")
+            print(f"- Reason: Latency ({p95_latency:.3f}s) exceeds threshold")
         sys.exit(1)
 
 if __name__ == "__main__":

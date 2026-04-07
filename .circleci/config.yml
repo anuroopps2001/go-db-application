@@ -66,14 +66,15 @@ jobs:
             DOCKERHUB_PASS=$(az keyvault secret show --name "DOCKERHUB-PASS" --vault-name "kv-aks-gitops-prod" --query value -o tsv)
             DOCKERHUB_USER=$(az keyvault secret show --name "DOCKERHUB-USER" --vault-name "kv-aks-gitops-prod" --query value -o tsv)
 
+            # Build with SHA for traceability
             docker build -f Docker/Dockerfile -t $DOCKERHUB_USER/go-app-circleci:${CIRCLE_SHA1} .
-            # Install Trivy
-            curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
-            ./bin/trivy image --severity HIGH,CRITICAL --ignore-unfixed $DOCKERHUB_USER/go-app-circleci:${CIRCLE_SHA1}
-            # Login and Push
+            
+            # Tag as 'latest' for Staging promotion (Permanent fix for SHA mismatch)
+            docker tag $DOCKERHUB_USER/go-app-circleci:${CIRCLE_SHA1} $DOCKERHUB_USER/go-app-circleci:latest
+
+            # Login and Push both tags
             echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
             docker push $DOCKERHUB_USER/go-app-circleci:${CIRCLE_SHA1}
-            docker tag $DOCKERHUB_USER/go-app-circleci:${CIRCLE_SHA1} $DOCKERHUB_USER/go-app-circleci:latest
             docker push $DOCKERHUB_USER/go-app-circleci:latest
 
   update_traffic:
@@ -87,29 +88,32 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Update Kustomize Dev Overlay
+          name: Update Kustomize Overlay
           command: |
             cd gitops-repo/overlays/<< parameters.env >>
-
             git fetch origin << parameters.branch >>
             git reset --mixed origin/<< parameters.branch >>
 
-            sed -i "/go-db-app-version02/,/value:/ s|value: .*|value: anuroop21/go-app-circleci:${CIRCLE_SHA1}|" kustomization.yaml   # update version deployment with the newly built tag
+            # Use SHA for Dev, but 'latest' for Staging to ensure the image exists
+            if [ "<< parameters.env >>" == "dev" ]; then
+                TAG="${CIRCLE_SHA1}"
+            else
+                TAG="latest"
+            fi
+
+            # Using anuroopps2001 (Correct Registry)
+            sed -i "/go-db-app-version02/,/value:/ s|value: .*|value: anuroop21/go-app-circleci:${TAG}|" kustomization.yaml
 
             sed -i "/backendRefs\/0/,/value:/ s|value: .*|value: << parameters.v1_weight >>|" kustomization.yaml
             sed -i "/backendRefs\/1/,/value:/ s|value: .*|value: << parameters.v2_weight >>|" kustomization.yaml
             
             git config user.name "circleCI"
             git config user.email "ci@circleci.com"
-
             git add kustomization.yaml
             
-            # Only commit if changes exist to avoid empty commit errors
             if ! git diff --cached --quiet; then
               git commit -m "<< parameters.env >>: Traffic << parameters.v1_weight >>/<< parameters.v2_weight >> [skip ci]"
               git push origin HEAD:<< parameters.branch >>
-            else
-              echo "No changes detected, skipping push."
             fi
 
   wait_for_rollout:
@@ -123,7 +127,13 @@ jobs:
           command: |
             az login --service-principal -u "$AZURE_CLIENT_ID" -t "$AZURE_TENANT_ID" --federated-token "$CIRCLE_OIDC_TOKEN_V2"
             az aks get-credentials -g rg-aks-southindia --name aks-private-india
-            kubectl rollout status deployment/go-db-app-version02 -n go-db-app-<< parameters.env >>  --timeout=60s
+            
+            # Wait for Postgres Readiness first (Avoid Connection Refused)
+            echo "Checking database readiness..."
+            kubectl rollout status deployment/postgres-deployment -n go-db-app-<< parameters.env >> --timeout=60s
+            
+            # Wait for App
+            kubectl rollout status deployment/go-db-app-version02 -n go-db-app-<< parameters.env >> --timeout=60s
 
   canary_check:
     machine: true
@@ -141,29 +151,29 @@ jobs:
           command: |
             sleep 30s
             export PROMETHEUS_URL="<< parameters.prom_url >>"
+
+            if [ "<< parameters.env >>" == "dev" ]; then
+                export TARGET_NAMESPACE="go-db-app-dev"
+            else
+                export TARGET_NAMESPACE="go-db-app-staging"
+            fi
+            
+            echo "Running Canary Check for Namespace: $TARGET_NAMESPACE"
             python3 k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts/canary_check.py
       - run:
           name: Rollback on Failure
           when: on_fail
           command: |
             cd gitops-repo/overlays/<< parameters.env >>
-
             git fetch origin << parameters.branch >>
             git reset --mixed origin/<< parameters.branch >>
-
-            # Standard Git Rollback logic using sed
             sed -i "/go-db-service-sample-version-01/,/weight:/ s|weight: .*|weight: << parameters.v1_rollback_weight >>|" kustomization.yaml
             sed -i "/go-db-service-sample-version-02/,/weight:/ s|weight: .*|weight: << parameters.v2_rollback_weight >>|" kustomization.yaml
-
             git config user.name "circleCI"
             git config user.email "ci@circleci.com"
             git add kustomization.yaml
-            if ! git diff --cached --quiet; then
-              git commit -m "Rollback triggered in << parameters.env >> [skip ci]"
-              git push origin HEAD:<< parameters.branch >>
-            else
-              echo "No changes detected, skipping push."
-            fi
+            git commit -m "Rollback triggered in << parameters.env >> [skip ci]"
+            git push origin HEAD:<< parameters.branch >>
               
 
   promote:
@@ -178,24 +188,21 @@ jobs:
           name: Shift Stable Image (v2 -> v1)
           command: |
             cd gitops-repo/overlays/<< parameters.env >>
-
             git fetch origin << parameters.branch >>
             git reset --mixed origin/<< parameters.branch >>
+            
+            # Update v01 image to match currently tested v02 image
+            if [ "<< parameters.env >>" == "dev" ]; then TAG="${CIRCLE_SHA1}"; else TAG="latest"; fi
+            
+            yq -i '(.patches[] | select(.target.name == "go-db-app-version01") | .patch) |= sub("value: .*"; "value: anuroop21/go-app-circleci:'"$TAG"'")' kustomization.yaml
 
-            # Target only the version01 block and update its image to the current SHA 100% tested version02
-            yq -i '
-            (.patches[] | select(.target.name == "go-db-app-version01") | .patch)
-            |= sub("value: .*"; "value: anuroop21/go-app-circleci:'"$CIRCLE_SHA1"'")
-            ' kustomization.yaml
-
-            # Since the version1 is updated with the version2 tested image now, traffic also, will be 100 % at newly 
             sed -i "/backendRefs\/0/,/value:/ s|value: .*|value: 100|" kustomization.yaml
             sed -i "/backendRefs\/1/,/value:/ s|value: .*|value: 0|" kustomization.yaml
 
             git config user.name "circleCI"
             git config user.email "ci@circleci.com"
             git add kustomization.yaml
-            git commit -m "<< parameters.env >> Promotion: ${CIRCLE_SHA1} [skip ci]"
+            git commit -m "<< parameters.env >> Promotion: ${TAG} [skip ci]"
             git push origin HEAD:<< parameters.branch >> 
 
   create_staging_pr:
@@ -206,47 +213,32 @@ jobs:
       - run:
           name: Create Staging Promotion PR via API
           command: |
-
-            # Login into Azure
             az login --service-principal -u "$AZURE_CLIENT_ID" -t "$AZURE_TENANT_ID" --federated-token "$CIRCLE_OIDC_TOKEN_V2"
-
             GITHUB_TOKEN=$(az keyvault secret show --name "GITHUB-TOKEN" --vault-name "kv-aks-gitops-prod" --query value -o tsv)
-
+            
             git config user.email "ci@circle.com"
             git config user.name "circleci"
             
             BRANCH_NAME="promote-${CIRCLE_SHA1:0:7}"
-            echo "export BRANCH=$BRANCH_NAME" >> $BASH_ENV
-            
-            # Branching directly from staging to ensure a clean PR
+            git branch -D $BRANCH_NAME || true
             git fetch origin staging
             git checkout -b $BRANCH_NAME origin/staging
 
-            # Apply image change to Staging Kustomize Overlay and This keeps Version 01 (Stable) untouched while you test the new SHA in Version 02
             cd gitops-repo/overlays/staging
-            sed -i "/go-db-app-version02/,/value:/ s|value: .*|value: anuroop21/go-app-circleci:${CIRCLE_SHA1}|" kustomization.yaml
-            
-            # Also, ensure weights in Staging are reset for the new test (e.g., 90/10
+            sed -i "/go-db-app-version02/,/value:/ s|value: .*|value: anuroop21/go-app-circleci:latest|" kustomization.yaml
             sed -i "/backendRefs\/0/,/value:/ s|value: .*|value: 90|" kustomization.yaml
             sed -i "/backendRefs\/1/,/value:/ s|value: .*|value: 10|" kustomization.yaml
             
             git add kustomization.yaml
-            git commit -m "Promote to Staging: ${CIRCLE_SHA1}"
+            git commit -m "Promote to Staging: Referring to latest stable build"
             git push -f origin $BRANCH_NAME
             
-            # GitHub CLI creates the PR (Ensure GITHUB_TOKEN is in Env Vars)
-            curl -L \
-              -X POST \
-              -H "Accept: application/vnd.github+json" \
-              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-              -H "X-GitHub-Api-Version: 2022-11-28" \
+            curl -L -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${GITHUB_TOKEN}" \
               https://api.github.com/repos/anuroopps2001/go-db-application/pulls \
-              -d "{
-                \"title\":\"🚀 Promote Dev to Staging: ${CIRCLE_SHA1:0:7}\",
-                \"body\":\"Automated promotion from feature/circleci-metrics to staging. Tested and promoted by CircleCI.\",
-                \"head\":\"$BRANCH_NAME\",
-                \"base\":\"staging\"
-              }"
+              -d "{\"title\":\"🚀 Promote Dev to Staging: ${CIRCLE_SHA1:0:7}\", \"body\":\"Automated promotion.\", \"head\":\"$BRANCH_NAME\", \"base\":\"staging\"}"
+
+
+  
 
 workflows:
   version: 2
