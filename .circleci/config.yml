@@ -200,14 +200,15 @@ jobs:
             ' kustomization.yaml
 
             yq -i '
-              (.patches[] | select(.target.name == "go-app-route-canary-route") | .patch) 
-              |= sub("backendRefs/0/weight\n.*value: [0-9]+"; "backendRefs/0/weight\n        value: 100")
-              ' kustomization.yaml
+              (.patches[] | select(.target.name == "go-db-app-version02") | .patch) |= 
+              . + "\n- op: replace\n  path: /spec/replicas\n  value: 0"
+            ' kustomization.yaml
 
+            # 3. Shift 100% Traffic to Version 01
             yq -i '
-              (.patches[] | select(.target.name == "go-app-route-canary-route") | .patch) 
-              |= sub("backendRefs/1/weight\n.*value: [0-9]+"; "backendRefs/1/weight\n        value: 0")
-              ' kustomization.yaml
+              (.patches[] | select(.target.name == "go-app-route-canary-route") | .patch) |=
+              sub("weight\n\s+value: [0-9]+", "weight\n        value: 100")
+            ' kustomization.yaml
 
             git config user.name "circleCI"
             git config user.email "ci@circleci.com"
