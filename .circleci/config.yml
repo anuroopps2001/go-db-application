@@ -149,6 +149,7 @@ jobs:
       - run:
           name: Prometheus SLO Check
           command: |
+            python3 -m pip install -r k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts/requirements.txt
             az login --service-principal -u "$AZURE_CLIENT_ID" -t "$AZURE_TENANT_ID" --federated-token "$CIRCLE_OIDC_TOKEN_V2"
 
             sleep 30s
