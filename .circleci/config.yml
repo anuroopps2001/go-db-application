@@ -88,6 +88,15 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Install Kustomize CLI tool
+          command: |
+            curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+
+            # Move it to a directory in your PATH
+            sudo mv kustomize /usr/local/bin/
+
+            kustmize version > /dev/null
+      - run:
           name: Update Kustomize Overlay
           command: |
             cd gitops-repo/overlays/<< parameters.env >>
