@@ -86,11 +86,11 @@ jobs:
       branch: {type: string, default: "feature/circleci-metrics"}
     steps:
       - checkout
-      - run:
-          name: 🔍 Debug OIDC Token Claims
-          command: |
-            # This prints the payload of your token so we can see the EXACT subject
-            echo $CIRCLE_OIDC_TOKEN_V2 | cut -d. -f2 | base64 -d | jq .
+      # - run:
+      #     name: 🔍 Debug OIDC Token Claims
+      #     command: |
+      #       # This prints the payload of your token so we can see the EXACT subject
+      #       echo $CIRCLE_OIDC_TOKEN_V2 | cut -d. -f2 | base64 -d | jq .
       - run:
           name: Update Kustomize Dev Overlay
           command: |
