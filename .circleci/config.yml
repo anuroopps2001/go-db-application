@@ -142,13 +142,15 @@ jobs:
       v1_rollback_weight: { type: string }
       v2_rollback_weight: { type: string }
       env: {type: string, default: "dev"}
-      prom_url: {type: string, default: "http://10.1.1.7:9090"} # Default URL is of dev environment prometheus
+      prom_url: {type: string, default: "https://go-app-prometheus-geacauf4ewaxgrd7.southindia.prometheus.monitor.azure.com"} # Default URL is of dev environment prometheus
       branch: {type: string, default: "feature/circleci-metrics"}
     steps:
       - checkout
       - run:
           name: Prometheus SLO Check
           command: |
+            az login --service-principal -u "$AZURE_CLIENT_ID" -t "$AZURE_TENANT_ID" --federated-token "$CIRCLE_OIDC_TOKEN_V2"
+
             sleep 30s
             export PROMETHEUS_URL="<< parameters.prom_url >>"
 
