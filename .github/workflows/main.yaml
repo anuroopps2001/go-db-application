@@ -1,0 +1,123 @@
+name: DevSecOps Canary Deployment
+
+on:
+  push:
+    branches:
+      - feature/circleci-metrics
+      - staging
+      - 'promote*'
+
+permissions:
+  id-token: write # Required for Azure OIDC
+  contents: write # Required for Git Push
+  pull-requests: write # Required for creating Staging PRs
+
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Golang env
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - name: Build and Scan
+        run: |
+          cd go-application
+          go mod tidy
+          go build -o app
+          go vet ./...
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./... || true
+
+  docker-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Docker/Dockerfile
+          ignore: DL3018
+
+  build-and-push:
+    needs: [build-and-test, docker-lint]
+    runs-on: [self-hosted, azure-vnet]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Azure Login using OIDC
+        uses: azure/login@v2
+        with: 
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and Push to Dockerhub
+        run: |
+          DOCKERHUB_PASS=$(az keyvault secret show --name "DOCKERHUB-PASS" --vault-name "kv-aks-gitops-prod" --query value -o tsv)
+          DOCKERHUB_USER=$(az keyvault secret show --name "DOCKERHUB-USER" --vault-name "kv-aks-gitops-prod" --query value -o tsv)
+
+          echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
+          docker build -f Docker/Dockerfile -t $DOCKERHUB_USER/go-app-circleci:${{ github.sha }} .
+          docker tag $DOCKERHUB_USER/go-app-circleci:${{ github.sha }} $DOCKERHUB_USER/go-app-circleci:latest
+          docker push $DOCKERHUB_USER/go-app-circleci:${{ github.sha }}
+          docker push $DOCKERHUB_USER/go-app-circleci:latest
+
+  deploy-canary:
+    needs: build-and-push
+    strategy:
+      matrix:
+        step: [10, 50, 100]
+    environment: 
+      - dev # This creates the "Approval" pause between steps if configured
+    runs-on: [self-hosted, azure-vnet]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set Traffic Weights
+        run:
+          V2_WEIGHT=${{ matrix.step }}
+          V1_WEIGHT=$((100 - V2_WEIGHT))
+
+          cd gitops-repo/overlays/dev
+
+          kustomize edit set image anuroop21/go-app-circleci=anuroop21/go-app-circleci:${{ github.sha }}
+
+              # Update Weights using structured sed (matches your CircleCI logic)
+          sed -i "/backendRefs\/0/,/value:/ s|value: .*|value: $V1_WEIGHT|" kustomization.yaml
+          sed -i "/backendRefs\/1/,/value:/ s|value: .*|value: $V2_WEIGHT|" kustomization.yaml
+
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add kustomization.yaml
+          git commit -m "Dev Traffic: $V1_WEIGHT/$V2_WEIGHT [skip ci]" || echo "No changes"
+          git push
+
+          - name: Wait for Rollout and SLO Check
+            run: |
+              az aks get-credentials -g rg-aks-southindia --name aks-private-india
+              kubectl rollout status deployment/go-db-app-version02 -n go-db-app-dev --timeout=90s
+          
+              # Python SLO Check
+              pip install --break-system-packages -r k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts/requirements.txt
+              export PROMETHEUS_URL="https://your-prom-url"
+              python3 k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts/canary_check.py
+
+  promote-to-staging:
+    needs: deploy-canary
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create staging PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create --title "🚀 Promote Dev to Staging" \
+                       --body "Automated promotion for ${{ github.sha }}" \
+                       --base staging --head feature/circleci-metrics
+
+  
+
+

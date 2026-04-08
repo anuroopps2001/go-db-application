@@ -1,0 +1,17 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: ama-metrics-settings-configmap
+  namespace: kube-system
+data:
+  schema-version:
+    v1
+  config-version:
+    ver1
+  # This tells the agent to scrape pods with prometheus.io annotations
+  pod-annotation-based-scraping: |
+    podannotationnamespaceregex = "go-db-app-dev|go-db-app-staging"
+  # This tells the agent to scrape services with prometheus.io annotations
+  default-scrape-settings-enabled: |
+    kube-state-metrics = true
+    node-exporter = true

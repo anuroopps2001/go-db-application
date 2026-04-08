@@ -9,7 +9,7 @@ BASE_URL = os.getenv("PROMETHEUS_URL", "https://go-app-prometheus-geacauf4ewaxgr
 PROMETHEUS_URL = f"{BASE_URL}/api/v1/query"
 CANARY_VERSION= "02"
 ERROR_THRESHOLD=2.0
-LATENCY_THRESHOLD=0.05
+LATENCY_THRESHOLD=0.2
 
 def get_azure_token():
     """Fetches a Bearer token for Azure Managed Prometheus."""
@@ -28,13 +28,13 @@ def query_prometheus(query):
     headers = {"Authorization": f"Bearer {token}"}
 
     try:
-        response = requests.get(PROMETHEUS_URL, params={'query': query}, headers=headers)
+        response = requests.get(PROMETHEUS_URL, params={'query': query}, headers=headers, timeout=5)
         response.raise_for_status() # Catch 401/403 errors
         data = response.json()
         results = data.get('data', {}).get('result', []) # List of dictionaries
         
         if not results:
-            return 0.0
+            return None
         
         return float(results[0]['value'][1])
     

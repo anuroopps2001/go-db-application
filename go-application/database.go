@@ -57,7 +57,7 @@ func NewDBClient() (Client, error) {
 		return Client{}, fmt.Errorf("invalid DB port: %v", err)
 	}
 
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s", dbHost, dbUsername, dbPassword, dbName, databasePort, "disable")
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s", dbHost, dbUsername, dbPassword, dbName, databasePort, "require")
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
