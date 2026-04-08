@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -27,15 +26,15 @@ func (s *MuxServer) addUser(w http.ResponseWriter, r *http.Request) {
 	user.Email = userData.Email
 	user.Age = userData.Age
 
-	if err := s.db.Create(&user).Error; err != nil {
+	err := observeDB("create_user", func() error {
+		return s.db.Create(&user).Error
+	})
 
-		// Handle duplicate email error (unique constraint)
+	if err != nil {
 		if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "unique") {
 			http.Error(w, "email already exists", http.StatusConflict)
 			return
 		}
-
-		// Other DB errors
 		http.Error(w, "db error", http.StatusInternalServerError)
 		return
 	}
@@ -43,9 +42,7 @@ func (s *MuxServer) addUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 
-	if err := json.NewEncoder(w).Encode(user); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	json.NewEncoder(w).Encode(user)
 }
 
 // List Users
@@ -53,16 +50,41 @@ func (s *MuxServer) listUsers(w http.ResponseWriter, r *http.Request) {
 
 	var users []User
 
-	if err := s.db.Find(&users).Error; err != nil {
+	err := observeDB("list_users", func() error {
+		return s.db.Find(&users).Error
+	})
+
+	if err != nil {
 		http.Error(w, "db error", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(users)
+}
 
-	if err := json.NewEncoder(w).Encode(users); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+// Get User
+func (s *MuxServer) getUser(w http.ResponseWriter, r *http.Request) {
+
+	userId, err := strconv.Atoi(mux.Vars(r)["id"])
+	if err != nil {
+		http.Error(w, "invalid user id", http.StatusBadRequest)
+		return
 	}
+
+	var user User
+
+	err = observeDB("get_user", func() error {
+		return s.db.First(&user, userId).Error
+	})
+
+	if err != nil {
+		http.Error(w, "user not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(user)
 }
 
 // Update User
@@ -83,7 +105,11 @@ func (s *MuxServer) updateUser(w http.ResponseWriter, r *http.Request) {
 
 	var user User
 
-	if err := s.db.First(&user, userId).Error; err != nil {
+	err = observeDB("get_user", func() error {
+		return s.db.First(&user, userId).Error
+	})
+
+	if err != nil {
 		http.Error(w, "user not found", http.StatusNotFound)
 		return
 	}
@@ -98,18 +124,20 @@ func (s *MuxServer) updateUser(w http.ResponseWriter, r *http.Request) {
 		user.Age = userData.Age
 	}
 
-	if err := s.db.Save(&user).Error; err != nil {
+	err = observeDB("update_user", func() error {
+		return s.db.Save(&user).Error
+	})
+
+	if err != nil {
 		http.Error(w, "failed to update user", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 
-	if err := json.NewEncoder(w).Encode(map[string]string{
+	json.NewEncoder(w).Encode(map[string]string{
 		"message": "User updated successfully",
-	}); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	})
 }
 
 // Delete User
@@ -121,51 +149,29 @@ func (s *MuxServer) deleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.db.Delete(&User{}, userId).Error; err != nil {
+	err = observeDB("delete_user", func() error {
+		return s.db.Delete(&User{}, userId).Error
+	})
+
+	if err != nil {
 		http.Error(w, "failed to delete user", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 
-	if err := json.NewEncoder(w).Encode(map[string]string{
+	json.NewEncoder(w).Encode(map[string]string{
 		"message": "User deleted successfully",
-	}); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	})
 }
 
-func (s *MuxServer) getUser(w http.ResponseWriter, r *http.Request) {
-
-	userId, err := strconv.Atoi(mux.Vars(r)["id"])
-	if err != nil {
-		http.Error(w, "invalid user id", http.StatusBadRequest)
-		return
-	}
-
-	var user User
-
-	if err := s.db.First(&user, userId).Error; err != nil {
-		http.Error(w, "user not found", http.StatusNotFound)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(user); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-// Health check (liveness probe)
+// Health check
 func (s *MuxServer) health(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
-
-	if _, err := w.Write([]byte("ok")); err != nil {
-		log.Println("Write failed:", err)
-	}
+	w.Write([]byte("ok"))
 }
 
-// Readiness check (DB connectivity)
+// Readiness check
 func (s *MuxServer) ready(w http.ResponseWriter, _ *http.Request) {
 
 	sqlDB, err := s.db.DB()
@@ -183,8 +189,5 @@ func (s *MuxServer) ready(w http.ResponseWriter, _ *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-
-	if _, err := w.Write([]byte("ready")); err != nil {
-		log.Println("Write failed:", err)
-	}
+	w.Write([]byte("ready"))
 }
