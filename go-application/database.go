@@ -47,10 +47,9 @@ func NewDBClient() (Client, error) {
 	dbPassword := os.Getenv("DB_PASSWORD")
 	dbName := os.Getenv("DB_NAME")
 	dbPort := os.Getenv("DB_PORT")
-	dbServer := os.Getenv("DB_SERVER") // 🔥 REQUIRED for Azure
 
 	// 🔹 Validate required env vars
-	if dbHost == "" || dbUsername == "" || dbPassword == "" || dbName == "" || dbPort == "" || dbServer == "" {
+	if dbHost == "" || dbUsername == "" || dbPassword == "" || dbName == "" || dbPort == "" {
 		return Client{}, fmt.Errorf("missing required database environment variables")
 	}
 
@@ -61,7 +60,7 @@ func NewDBClient() (Client, error) {
 	}
 
 	// 🔥 Azure requires: username@server
-	fullUsername := fmt.Sprintf("%s@%s", dbUsername, dbServer)
+	fullUsername := dbUsername
 
 	// 🔹 Connection string
 	dsn := fmt.Sprintf(
