@@ -63,17 +63,21 @@ func init() {
 	prometheus.MustRegister(dbErrorsTotal)
 }
 
-func isExpectedError(err error) bool {
+func isSystemError(err error) bool {
 	msg := err.Error()
 
-	if strings.Contains(msg, "duplicate") || strings.Contains(msg, "unique") {
-		return true
+	//  business / expected errors → NOT system failures
+	if strings.Contains(msg, "duplicate") ||
+		strings.Contains(msg, "unique") ||
+		strings.Contains(msg, "constraint") {
+		return false
 	}
 
-	return false
+	// ✅ everything else → treat as system failure
+	return true
 }
 
-// 🔥 Improved DB observer
+// Improved DB observer
 func observeDB(operation string, fn func() error) error {
 	start := time.Now()
 
@@ -81,14 +85,11 @@ func observeDB(operation string, fn func() error) error {
 
 	duration := time.Since(start).Seconds()
 
-	// latency
 	dbQueryDuration.WithLabelValues(operation).Observe(duration)
-
-	// total queries
 	dbQueriesTotal.WithLabelValues(operation).Inc()
 
-	// errors
-	if err != nil && !isExpectedError(err) {
+	// ✅ Only count REAL system failures
+	if err != nil && isSystemError(err) {
 		dbErrorsTotal.WithLabelValues(operation).Inc()
 	}
 
