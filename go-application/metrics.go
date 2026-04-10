@@ -7,6 +7,7 @@ import (
 )
 
 var (
+	// HTTP Metrics
 	httpRequestsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "http_requests_total",
@@ -24,11 +25,30 @@ var (
 		[]string{"method", "path"},
 	)
 
+	// DB Latency
 	dbQueryDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    "db_query_duration_seconds",
 			Help:    "Database query latency",
 			Buckets: []float64{0.01, 0.05, 0.1, 0.2, 0.5, 1, 2},
+		},
+		[]string{"operation"},
+	)
+
+	// 🔥 NEW: Total DB queries
+	dbQueriesTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "db_queries_total",
+			Help: "Total number of DB queries",
+		},
+		[]string{"operation"},
+	)
+
+	// 🔥 NEW: DB errors
+	dbErrorsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "db_errors_total",
+			Help: "Total number of DB errors",
 		},
 		[]string{"operation"},
 	)
@@ -38,16 +58,28 @@ func init() {
 	prometheus.MustRegister(httpRequestsTotal)
 	prometheus.MustRegister(httpRequestDuration)
 	prometheus.MustRegister(dbQueryDuration)
+	prometheus.MustRegister(dbQueriesTotal)
+	prometheus.MustRegister(dbErrorsTotal)
 }
 
-// 🔥 Helper function (important)
+// 🔥 Improved DB observer
 func observeDB(operation string, fn func() error) error {
 	start := time.Now()
 
 	err := fn()
 
 	duration := time.Since(start).Seconds()
+
+	// latency
 	dbQueryDuration.WithLabelValues(operation).Observe(duration)
+
+	// total queries
+	dbQueriesTotal.WithLabelValues(operation).Inc()
+
+	// errors
+	if err != nil {
+		dbErrorsTotal.WithLabelValues(operation).Inc()
+	}
 
 	return err
 }
