@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -62,6 +63,16 @@ func init() {
 	prometheus.MustRegister(dbErrorsTotal)
 }
 
+func isExpectedError(err error) bool {
+	msg := err.Error()
+
+	if strings.Contains(msg, "duplicate") || strings.Contains(msg, "unique") {
+		return true
+	}
+
+	return false
+}
+
 // 🔥 Improved DB observer
 func observeDB(operation string, fn func() error) error {
 	start := time.Now()
@@ -77,7 +88,7 @@ func observeDB(operation string, fn func() error) error {
 	dbQueriesTotal.WithLabelValues(operation).Inc()
 
 	// errors
-	if err != nil {
+	if err != nil && !isExpectedError(err) {
 		dbErrorsTotal.WithLabelValues(operation).Inc()
 	}
 
