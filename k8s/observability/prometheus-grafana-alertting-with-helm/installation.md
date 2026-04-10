@@ -1,4 +1,13 @@
+### Insall helm
+```bash
+sudo apt-get install curl gpg apt-transport-https --yes
+curl -fsSL https://packages.buildkite.com/helm-linux/helm-debian/gpgkey | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
+echo "deb [signed-by=/usr/share/keyrings/helm.gpg] https://packages.buildkite.com/helm-linux/helm-debian/any/ any main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+sudo apt-get update
+sudo apt-get install helm
+```
 
+### Add PLG stack repos
 ```bash
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
@@ -9,12 +18,42 @@ helm repo ls
 helm search repo prometheus-community/kube-prometheus-stack --versions
 ```
 
+### Create namespace and install the chart into `monitoring` namespace
 ```bash
-kubectl create ns monitoring
+helm install prometheus prometheus-community/kube-prometheus-stack \
+  --namespace monitoring \
+  --create-namespace \
+  --set grafana.enabled=true
 ```
 
+
+### Loki setup to be used with above created grafana instance from prometheus chart 
 ```bash
-helm install monitoring prometheus-community/kube-prometheus-stack -n monitoring
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo update
+
+# Install Loki (using the simple scalable mode or monolithic for smaller clusters)
+helm install loki grafana/loki-stack \
+  --namespace monitoring \
+  --set loki.persistence.enabled=true \
+  --set loki.persistence.size=10Gi \
+  --set loki.persistence.storageClass=default \
+  --set promtail.enabled=true \
+  --set grafana.enabled=false # We use the Grafana from the Prometheus stack created above
+```
+
+
+
+### Access Grafana 
+```bash
+kubectl port-forward svc/prometheus-grafana 8080:80 -n monitoring
+azureuser@vm-circleci-runner:~$ kubectl get secrets -n monitoring  prometheus-grafana -ojsonpath='{.data.admin-password}' | base64 -d
+```
+### Add Loki as datasource
+```bash
+Test the Connection: In Data Sources > Loki, click Save & Test.
+
+If you still get the unexpected IDENTIFIER error, ignore it. 3.  Explore the Logs: Go to the Explore tab (compass icon), select Loki, and use the Label Browser. You should see labels like job, namespace, and pod populated with data from your AKS cluster.
 ```
 
 
