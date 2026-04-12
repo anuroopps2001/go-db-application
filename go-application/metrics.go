@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 )
 
 var (
-	// HTTP Metrics
 	httpRequestsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "http_requests_total",
@@ -28,7 +28,6 @@ var (
 		[]string{"method", "path"},
 	)
 
-	// DB Metrics
 	dbQueryDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    "db_query_duration_seconds",
@@ -75,31 +74,33 @@ func isSystemError(err error) bool {
 	return true
 }
 
-// 🔥 UPDATED: Logs + Metrics together
-func observeDB(operation string, fn func() error) error {
+// 🔥 UPDATED: context-aware logging + metrics
+func observeDBWithContext(ctx context.Context, operation string, fn func() error) error {
 	start := time.Now()
 
 	err := fn()
 
 	duration := time.Since(start).Seconds()
 
-	// Metrics
 	dbQueryDuration.WithLabelValues(operation).Observe(duration)
 	dbQueriesTotal.WithLabelValues(operation).Inc()
 
-	// Logs + error metrics
+	reqID := getRequestID(ctx)
+
 	if err != nil {
 		if isSystemError(err) {
 			dbErrorsTotal.WithLabelValues(operation).Inc()
 		}
 
 		slog.Error("db operation failed",
+			"request_id", reqID,
 			"operation", operation,
 			"error", err.Error(),
 			"duration_seconds", duration,
 		)
 	} else {
 		slog.Info("db operation success",
+			"request_id", reqID,
 			"operation", operation,
 			"duration_seconds", duration,
 		)

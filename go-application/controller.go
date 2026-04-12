@@ -26,7 +26,7 @@ func (s *MuxServer) addUser(w http.ResponseWriter, r *http.Request) {
 	user.Email = userData.Email
 	user.Age = userData.Age
 
-	err := observeDB("create_user", func() error {
+	err := observeDBWithContext(r.Context(), "create_user", func() error {
 		return s.db.Create(&user).Error
 	})
 
@@ -50,7 +50,7 @@ func (s *MuxServer) listUsers(w http.ResponseWriter, r *http.Request) {
 
 	var users []User
 
-	err := observeDB("list_users", func() error {
+	err := observeDBWithContext(r.Context(), "list_users", func() error {
 		return s.db.Find(&users).Error
 	})
 
@@ -74,7 +74,7 @@ func (s *MuxServer) getUser(w http.ResponseWriter, r *http.Request) {
 
 	var user User
 
-	err = observeDB("get_user", func() error {
+	err = observeDBWithContext(r.Context(), "get_user", func() error {
 		return s.db.First(&user, userId).Error
 	})
 
@@ -105,7 +105,7 @@ func (s *MuxServer) updateUser(w http.ResponseWriter, r *http.Request) {
 
 	var user User
 
-	err = observeDB("get_user", func() error {
+	err = observeDBWithContext(r.Context(), "get_user", func() error {
 		return s.db.First(&user, userId).Error
 	})
 
@@ -124,7 +124,7 @@ func (s *MuxServer) updateUser(w http.ResponseWriter, r *http.Request) {
 		user.Age = userData.Age
 	}
 
-	err = observeDB("update_user", func() error {
+	err = observeDBWithContext(r.Context(), "update_user", func() error {
 		return s.db.Save(&user).Error
 	})
 
@@ -149,7 +149,7 @@ func (s *MuxServer) deleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = observeDB("delete_user", func() error {
+	err = observeDBWithContext(r.Context(), "delete_user", func() error {
 		return s.db.Delete(&User{}, userId).Error
 	})
 

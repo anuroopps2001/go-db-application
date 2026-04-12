@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"log/slog"
 	"net/http"
@@ -10,6 +11,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
+
+type contextKey string
+
+const requestIDKey contextKey = "request_id"
 
 type Server interface {
 	Start() error
@@ -28,7 +33,7 @@ func NewServer(db Client) Server {
 	}
 
 	server.routes()
-	server.gorilla.Use(observabilityMiddleware) // 🔥 changed here
+	server.gorilla.Use(observabilityMiddleware)
 	return server
 }
 
@@ -42,14 +47,22 @@ func (r *statusRecorder) WriteHeader(code int) {
 	r.ResponseWriter.WriteHeader(code)
 }
 
-// 🔥 NEW: Combined logging + metrics middleware
 func observabilityMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
+		// 🔥 filter noisy endpoints
+		if r.URL.Path == "/healthz" || r.URL.Path == "/ready" || r.URL.Path == "/metrics" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		requestID := uuid.New().String()
 
-		rec := &statusRecorder{ResponseWriter: w, status: 200}
+		// 🔥 propagate request_id via context
+		ctx := context.WithValue(r.Context(), requestIDKey, requestID)
+		r = r.WithContext(ctx)
 
+		rec := &statusRecorder{ResponseWriter: w, status: 200}
 		start := time.Now()
 
 		next.ServeHTTP(rec, r)
@@ -68,7 +81,7 @@ func observabilityMiddleware(next http.Handler) http.Handler {
 			r.URL.Path,
 		).Observe(duration)
 
-		// 🔥 Structured logging
+		// Logs
 		slog.Info("http request",
 			"request_id", requestID,
 			"method", r.Method,
@@ -79,6 +92,13 @@ func observabilityMiddleware(next http.Handler) http.Handler {
 			"remote_addr", r.RemoteAddr,
 		)
 	})
+}
+
+func getRequestID(ctx context.Context) string {
+	if v, ok := ctx.Value(requestIDKey).(string); ok {
+		return v
+	}
+	return ""
 }
 
 func (s *MuxServer) Start() error {

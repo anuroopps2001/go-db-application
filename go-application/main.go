@@ -1,24 +1,33 @@
 package main
 
-import "log"
+import (
+	"log"
+	"log/slog"
+	"os"
+)
 
 func main() {
 
-	db, err := NewDBClient()
+	// 🔥 JSON logging (required for Loki)
+	handler := slog.NewJSONHandler(os.Stdout, nil)
+	logger := slog.New(handler)
+	slog.SetDefault(logger)
 
+	db, err := NewDBClient()
 	if err != nil {
-		log.Fatalf("DB Error: %s\n", err)
+		slog.Error("db init failed", "error", err.Error())
 		return
 	}
 
 	err = db.RunMigration()
-
 	if err != nil {
-		log.Fatalf("Migration Failed: %s\n", err)
+		slog.Error("migration failed", "error", err.Error())
 		return
 	}
 
 	service := NewServer(db)
+
+	slog.Info("starting server", "port", 8080)
 
 	log.Fatal(service.Start())
 }
