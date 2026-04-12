@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
@@ -27,7 +28,7 @@ func NewServer(db Client) Server {
 	}
 
 	server.routes()
-	server.gorilla.Use(metricsMiddleware)
+	server.gorilla.Use(observabilityMiddleware) // 🔥 changed here
 	return server
 }
 
@@ -41,8 +42,12 @@ func (r *statusRecorder) WriteHeader(code int) {
 	r.ResponseWriter.WriteHeader(code)
 }
 
-func metricsMiddleware(next http.Handler) http.Handler {
+// 🔥 NEW: Combined logging + metrics middleware
+func observabilityMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		requestID := uuid.New().String()
+
 		rec := &statusRecorder{ResponseWriter: w, status: 200}
 
 		start := time.Now()
@@ -51,6 +56,7 @@ func metricsMiddleware(next http.Handler) http.Handler {
 
 		duration := time.Since(start).Seconds()
 
+		// Metrics
 		httpRequestsTotal.WithLabelValues(
 			r.Method,
 			r.URL.Path,
@@ -61,11 +67,22 @@ func metricsMiddleware(next http.Handler) http.Handler {
 			r.Method,
 			r.URL.Path,
 		).Observe(duration)
+
+		// 🔥 Structured logging
+		slog.Info("http request",
+			"request_id", requestID,
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", rec.status,
+			"duration_seconds", duration,
+			"user_agent", r.UserAgent(),
+			"remote_addr", r.RemoteAddr,
+		)
 	})
 }
 
 func (s *MuxServer) Start() error {
-	slog.Info("Serving at port 8080")
+	slog.Info("server starting", "port", 8080)
 	log.Fatal(http.ListenAndServe(":8080", s.gorilla))
 	return nil
 }

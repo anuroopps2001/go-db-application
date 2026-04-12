@@ -4,6 +4,8 @@ import (
 	"strings"
 	"time"
 
+	"log/slog"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -26,7 +28,7 @@ var (
 		[]string{"method", "path"},
 	)
 
-	// DB Latency
+	// DB Metrics
 	dbQueryDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    "db_query_duration_seconds",
@@ -36,7 +38,6 @@ var (
 		[]string{"operation"},
 	)
 
-	// 🔥 NEW: Total DB queries
 	dbQueriesTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "db_queries_total",
@@ -45,7 +46,6 @@ var (
 		[]string{"operation"},
 	)
 
-	// 🔥 NEW: DB errors
 	dbErrorsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "db_errors_total",
@@ -66,18 +66,16 @@ func init() {
 func isSystemError(err error) bool {
 	msg := err.Error()
 
-	//  business / expected errors → NOT system failures
 	if strings.Contains(msg, "duplicate") ||
 		strings.Contains(msg, "unique") ||
 		strings.Contains(msg, "constraint") {
 		return false
 	}
 
-	// ✅ everything else → treat as system failure
 	return true
 }
 
-// Improved DB observer
+// 🔥 UPDATED: Logs + Metrics together
 func observeDB(operation string, fn func() error) error {
 	start := time.Now()
 
@@ -85,12 +83,26 @@ func observeDB(operation string, fn func() error) error {
 
 	duration := time.Since(start).Seconds()
 
+	// Metrics
 	dbQueryDuration.WithLabelValues(operation).Observe(duration)
 	dbQueriesTotal.WithLabelValues(operation).Inc()
 
-	// ✅ Only count REAL system failures
-	if err != nil && isSystemError(err) {
-		dbErrorsTotal.WithLabelValues(operation).Inc()
+	// Logs + error metrics
+	if err != nil {
+		if isSystemError(err) {
+			dbErrorsTotal.WithLabelValues(operation).Inc()
+		}
+
+		slog.Error("db operation failed",
+			"operation", operation,
+			"error", err.Error(),
+			"duration_seconds", duration,
+		)
+	} else {
+		slog.Info("db operation success",
+			"operation", operation,
+			"duration_seconds", duration,
+		)
 	}
 
 	return err
