@@ -12,10 +12,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-type contextKey string
-
-const requestIDKey contextKey = "request_id"
-
 type Server interface {
 	Start() error
 	routes()

@@ -67,7 +67,8 @@ func isSystemError(err error) bool {
 
 	if strings.Contains(msg, "duplicate") ||
 		strings.Contains(msg, "unique") ||
-		strings.Contains(msg, "constraint") {
+		strings.Contains(msg, "constraint") ||
+		strings.Contains(msg, "record not found") {
 		return false
 	}
 
