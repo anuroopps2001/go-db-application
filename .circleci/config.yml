@@ -78,6 +78,11 @@ jobs:
             curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
       - run:
+          name: Debug
+          command: |
+            echo $CIRCLE_OIDC_TOKEN | jq -R 'split(".") | .[1] | @base64d | fromjson'
+
+      - run:
           name: Build, Scan, and Push
           command: |
 
