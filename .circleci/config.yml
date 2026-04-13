@@ -335,11 +335,15 @@ workflows:
           filters:
             branches:
               only: feature/circleci-metrics
+          requires:
+            - build
 
       - docker-file-linting:
           filters:
             branches:
               only: feature/circleci-metrics
+          requires:
+            - build
 
       - docker-build-and-push:
           requires: [build, static-analysis, docker-file-linting]
