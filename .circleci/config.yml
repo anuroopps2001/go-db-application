@@ -52,14 +52,15 @@ jobs:
             govulncheck ./... || true
 
   docker-file-linting:
-    executor: base
+    docker:
+      - image: hadolint/hadolint:latest-debian
     working_directory: ~/project
     steps:
       - attach_workspace:
           at: ~/project    
       - run:
           name: Lint Dockerfile
-          command: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 - < Docker/Dockerfile
+          command: hadolint --ignore DL3018 Docker/Dockerfile
 
   docker-build-and-push:
     executor: azure_self_runner  # Because Azure keyvault was allowed to access only from the self hosted runner azure vnet subnets
