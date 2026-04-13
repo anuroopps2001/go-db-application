@@ -73,6 +73,11 @@ jobs:
           docker_layer_caching: true
 
       - run:
+          name: Install AZ CLI
+          command: |
+            curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+      - run:
           name: Build, Scan, and Push
           command: |
 
