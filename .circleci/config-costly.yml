@@ -4,11 +4,9 @@ executors:
   go-executor:
     docker:
       - image: cimg/go:1.23
-    resource_class: small
   base:
     docker:
       - image: cimg/base:stable
-    resource_class: small
   azure_self_runner:
     machine: true
     resource_class: anuroopps2001/for-aks-rc
@@ -29,34 +27,26 @@ jobs:
           command: |
             go mod tidy
             go build -o app
-
-# Persist the whole project to the workspace for subsequent jobs
-      - persist_to_workspace:
-          root: ~/project
-          paths: [.]
   
   static-analysis:
     executor: go-executor
-    working_directory: ~/project
     steps:
-      - attach_workspace: # <-- Add this back
-          at: ~/project
+      - checkout
       - run:
           name: Quality and Vulnerability Scan
           working_directory: go-application
           command: |
             test -z "$(gofmt -l .)"
             go vet ./...
-            # Note: go install still takes time; consider a custom image for this later
             go install golang.org/x/vuln/cmd/govulncheck@latest
             govulncheck ./... || true
 
   docker-file-linting:
     executor: base
-    working_directory: ~/project
     steps:
-      - attach_workspace:
-          at: ~/project    
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true    
       - run:
           name: Lint Dockerfile
           command: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 - < Docker/Dockerfile
@@ -65,12 +55,7 @@ jobs:
     executor: azure_self_runner  # Because Azure keyvault was allowed to access only from the self hosted runner azure vnet subnets
     working_directory: ~/project
     steps:
-      - attach_workspace:
-          at: ~/project
-
-      - setup_remote_docker:
-          docker_layer_caching: true
-
+      - checkout
       - run:
           name: Build, Scan, and Push
           command: |
@@ -101,8 +86,7 @@ jobs:
       env: {type: string, default: "dev"}  
       branch: {type: string, default: "feature/circleci-metrics"}
     steps:
-      - attach_workspace:
-          at: ~/project
+      - checkout
       - run:
           name: Install Kustomize CLI tool
           command: |
@@ -146,8 +130,7 @@ jobs:
     parameters:
       env: {type: string, default: "dev"}
     steps:
-      - attach_workspace:
-          at: ~/project
+      - checkout
       - run:
           name: Authenticate AKS and Wait
           command: |
@@ -171,8 +154,7 @@ jobs:
       prom_url: {type: string, default: "https://go-app-prometheus-geacauf4ewaxgrd7.southindia.prometheus.monitor.azure.com"} # Default URL is of dev environment prometheus
       branch: {type: string, default: "feature/circleci-metrics"}
     steps:
-      - attach_workspace:
-          at: ~/project
+      - checkout
       - run:
           name: Prometheus SLO Check
           command: |
@@ -234,8 +216,7 @@ jobs:
       branch: {type: string, default: "feature/circleci-metrics"}
     working_directory: ~/project 
     steps:
-      - attach_workspace:
-          at: ~/project
+      - checkout 
       - run:
           name: Install Kustomize CLI tool
           command: |
@@ -278,8 +259,7 @@ jobs:
     executor: azure_self_runner  # Again, Azure keyVault access allowed only from the self hosted runner subnet
     working_directory: ~/project
     steps:
-      - attach_workspace:
-          at: ~/project
+      - checkout
       - run:
           name: Create Staging Promotion PR via API
           command: |
