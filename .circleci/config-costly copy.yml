@@ -1,0 +1,480 @@
+version: 2.1
+
+executors:
+  go-executor:
+    docker:
+      - image: cimg/go:1.23
+    resource_class: small
+  base:
+    docker:
+      - image: cimg/base:stable
+    resource_class: small
+  azure_self_runner:
+    machine: true
+    resource_class: anuroopps2001/for-aks-rc
+
+jobs:
+  build:
+    executor: go-executor
+    working_directory: ~/project
+    steps:
+      - checkout
+      - run:
+          name: Debug branch
+          command: |
+            echo "CIRCLE_BRANCH=$CIRCLE_BRANCH"
+      - run:
+          name: Build application
+          working_directory: go-application
+          command: |
+            go mod tidy
+            go build -o app
+
+# Persist the whole project to the workspace for subsequent jobs
+      - persist_to_workspace:
+          root: ~/project
+          paths: [.]
+  
+  static-analysis:
+    executor: go-executor
+    working_directory: ~/project
+    steps:
+      - attach_workspace: # <-- Add this back
+          at: ~/project
+      - run:
+          name: Quality and Vulnerability Scan
+          working_directory: go-application
+          command: |
+            test -z "$(gofmt -l .)"
+            go vet ./...
+            # Note: go install still takes time; consider a custom image for this later
+            go install golang.org/x/vuln/cmd/govulncheck@latest
+            govulncheck ./... || true
+
+  docker-file-linting:
+    executor: base
+    working_directory: ~/project
+    steps:
+      - attach_workspace:
+          at: ~/project    
+      - run:
+          name: Lint Dockerfile
+          command: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 - < Docker/Dockerfile
+
+  docker-build-and-push:
+    executor: azure_self_runner  # Because Azure keyvault was allowed to access only from the self hosted runner azure vnet subnets
+    working_directory: ~/project
+    steps:
+      - attach_workspace:
+          at: ~/project
+
+      - setup_remote_docker:
+          docker_layer_caching: true
+
+      - run:
+          name: Build, Scan, and Push
+          command: |
+
+            # Login into Azure
+            az login --service-principal -u "$AZURE_CLIENT_ID" -t "$AZURE_TENANT_ID" --federated-token "$CIRCLE_OIDC_TOKEN_V2"
+
+            DOCKERHUB_PASS=$(az keyvault secret show --name "DOCKERHUB-PASS" --vault-name "kv-aks-gitops-prod" --query value -o tsv)
+            DOCKERHUB_USER=$(az keyvault secret show --name "DOCKERHUB-USER" --vault-name "kv-aks-gitops-prod" --query value -o tsv)
+
+            # Build with SHA for traceability
+            docker build -f Docker/Dockerfile -t $DOCKERHUB_USER/go-app-circleci:${CIRCLE_SHA1} .
+            
+            # Tag as 'latest' for Staging promotion (Permanent fix for SHA mismatch)
+            docker tag $DOCKERHUB_USER/go-app-circleci:${CIRCLE_SHA1} $DOCKERHUB_USER/go-app-circleci:latest
+
+            # Login and Push both tags
+            echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
+            docker push $DOCKERHUB_USER/go-app-circleci:${CIRCLE_SHA1}
+            docker push $DOCKERHUB_USER/go-app-circleci:latest
+
+  update_traffic:
+    executor: base
+    working_directory: ~/project
+    parameters:
+      v1_weight: { type: string }
+      v2_weight: { type: string }
+      env: {type: string, default: "dev"}  
+      branch: {type: string, default: "feature/circleci-metrics"}
+    steps:
+      - attach_workspace:
+          at: ~/project
+      - run:
+          name: Install Kustomize CLI tool
+          command: |
+            curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+
+            # Move it to a directory in your PATH
+            sudo mv kustomize /usr/local/bin/
+            hash -r
+            kustomize version > /dev/null
+      - run:
+          name: Update Kustomize Overlay
+          command: |
+            cd gitops-repo/overlays/<< parameters.env >>
+            git fetch origin << parameters.branch >>
+            git reset --mixed origin/<< parameters.branch >>
+
+            # Use SHA for Dev, but 'latest' for Staging to ensure the image exists
+            if [ "<< parameters.env >>" == "dev" ]; then
+                TAG="${CIRCLE_SHA1}"
+            else
+                TAG="latest"
+            fi
+
+            # Using anuroopps2001 (Correct Registry)
+            kustomize edit set image anuroop21/go-app-circleci=anuroop21/go-app-circleci:${TAG}
+
+            sed -i "/backendRefs\/0/,/value:/ s|value: .*|value: << parameters.v1_weight >>|" kustomization.yaml
+            sed -i "/backendRefs\/1/,/value:/ s|value: .*|value: << parameters.v2_weight >>|" kustomization.yaml
+            
+            git config user.name "circleCI"
+            git config user.email "ci@circleci.com"
+            git add kustomization.yaml
+            
+            if ! git diff --cached --quiet; then
+              git commit -m "<< parameters.env >>: Traffic << parameters.v1_weight >>/<< parameters.v2_weight >> [skip ci]"
+              git push origin HEAD:<< parameters.branch >>
+            fi
+
+  wait_for_rollout:
+    executor: azure_self_runner
+    parameters:
+      env: {type: string, default: "dev"}
+    steps:
+      - attach_workspace:
+          at: ~/project
+      - run:
+          name: Authenticate AKS and Wait
+          command: |
+            az login --service-principal -u "$AZURE_CLIENT_ID" -t "$AZURE_TENANT_ID" --federated-token "$CIRCLE_OIDC_TOKEN_V2"
+            az aks get-credentials -g rg-aks-southindia --name aks-private-india
+            
+            # Wait for Postgres Readiness first (Avoid Connection Refused)
+            echo "Checking database readiness..."
+            kubectl rollout status deployment/postgres-deployment -n go-db-app-<< parameters.env >> --timeout=60s
+            
+            # Wait for App
+            kubectl rollout status deployment/go-db-app-version02 -n go-db-app-<< parameters.env >> --timeout=60s
+
+  canary_check:
+    machine: true
+    resource_class: anuroopps2001/for-aks-rc
+    parameters:
+      v1_rollback_weight: { type: string }
+      v2_rollback_weight: { type: string }
+      env: {type: string, default: "dev"}
+      prom_url: {type: string, default: "https://go-app-prometheus-geacauf4ewaxgrd7.southindia.prometheus.monitor.azure.com"} # Default URL is of dev environment prometheus
+      branch: {type: string, default: "feature/circleci-metrics"}
+    steps:
+      - attach_workspace:
+          at: ~/project
+      - run:
+          name: Prometheus SLO Check
+          command: |
+            # Define the modules we need to check
+            REQUIRED_MODULES=("azure.identity" "requests")
+            NEEDS_INSTALL=false
+
+            for module in "${REQUIRED_MODULES[@]}"; do
+              if ! python3 -c "import $module" &> /dev/null; then
+                echo "Module $module is missing."
+                NEEDS_INSTALL=true
+              else
+                echo "Module $module is already installed."
+              fi
+            done
+
+            if [ "$NEEDS_INSTALL" = true ]; then
+              echo "Installing missing dependencies from requirements.txt..."
+              # Using the --break-system-packages flag for modern Linux/PEP 668
+              python3 -m pip install --break-system-packages -r k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts/requirements.txt
+            else
+              echo "All dependencies satisfied. Skipping installation."
+            fi
+
+
+            az login --service-principal -u "$AZURE_CLIENT_ID" -t "$AZURE_TENANT_ID" --federated-token "$CIRCLE_OIDC_TOKEN_V2"
+
+            sleep 30s
+            export PROMETHEUS_URL="<< parameters.prom_url >>"
+
+            if [ "<< parameters.env >>" == "dev" ]; then
+                export TARGET_NAMESPACE="go-db-app-dev"
+            else
+                export TARGET_NAMESPACE="go-db-app-staging"
+            fi
+            
+            echo "Running Canary Check for Namespace: $TARGET_NAMESPACE"
+            python3 k8s/observability/prometheus-grafana-alertting-with-helm/slo/scripts/canary_check.py
+      - run:
+          name: Rollback on Failure
+          when: on_fail
+          command: |
+            cd gitops-repo/overlays/<< parameters.env >>
+            git fetch origin << parameters.branch >>
+            git reset --mixed origin/<< parameters.branch >>
+            sed -i "/go-db-service-sample-version-01/,/weight:/ s|weight: .*|weight: << parameters.v1_rollback_weight >>|" kustomization.yaml
+            sed -i "/go-db-service-sample-version-02/,/weight:/ s|weight: .*|weight: << parameters.v2_rollback_weight >>|" kustomization.yaml
+            git config user.name "circleCI"
+            git config user.email "ci@circleci.com"
+            git add kustomization.yaml
+            git commit -m "Rollback triggered in << parameters.env >> [skip ci]"
+            git push origin HEAD:<< parameters.branch >>
+              
+
+  promote:
+    executor: base
+    parameters:
+      env: {type: string, default: "dev"}
+      branch: {type: string, default: "feature/circleci-metrics"}
+    working_directory: ~/project 
+    steps:
+      - attach_workspace:
+          at: ~/project
+      - run:
+          name: Install Kustomize CLI tool
+          command: |
+            curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+
+            # Move it to a directory in your PATH
+            sudo mv kustomize /usr/local/bin/
+            hash -r
+            kustomize version > /dev/null
+      - run:
+          name: Shift Stable Image (v2 -> v1)
+          command: |
+            cd gitops-repo/overlays/<< parameters.env >>
+            git fetch origin << parameters.branch >>
+            git reset --mixed origin/<< parameters.branch >>
+            
+            # Update v01 image to match currently tested v02 image
+            if [ "<< parameters.env >>" == "dev" ]; then TAG="${CIRCLE_SHA1}"; else TAG="latest"; fi
+            
+            kustomize edit set image anuroop21/go-app-circleci=anuroop21/go-app-circleci:${TAG}
+            
+
+            yq -i '
+              (.patches[] | select(.target.name == "go-app-route-canary-route") | .patch) 
+              |= sub("backendRefs/0/weight\n.*value: [0-9]+"; "backendRefs/0/weight\n        value: 100")
+              ' kustomization.yaml
+
+            yq -i '
+              (.patches[] | select(.target.name == "go-app-route-canary-route") | .patch) 
+              |= sub("backendRefs/1/weight\n.*value: [0-9]+"; "backendRefs/1/weight\n        value: 0")
+              ' kustomization.yaml
+
+            git config user.name "circleCI"
+            git config user.email "ci@circleci.com"
+            git add kustomization.yaml
+            git commit -m "<< parameters.env >> Promotion: ${TAG} [skip ci]"
+            git push origin HEAD:<< parameters.branch >> 
+
+  create_staging_pr:
+    executor: azure_self_runner  # Again, Azure keyVault access allowed only from the self hosted runner subnet
+    working_directory: ~/project
+    steps:
+      - attach_workspace:
+          at: ~/project
+      - run:
+          name: Create Staging Promotion PR via API
+          command: |
+            az login --service-principal -u "$AZURE_CLIENT_ID" -t "$AZURE_TENANT_ID" --federated-token "$CIRCLE_OIDC_TOKEN_V2"
+            GITHUB_TOKEN=$(az keyvault secret show --name "GITHUB-TOKEN" --vault-name "kv-aks-gitops-prod" --query value -o tsv)
+            
+            git config user.email "ci@circle.com"
+            git config user.name "circleci"
+            
+            BRANCH_NAME="promote-${CIRCLE_SHA1:0:7}"
+            git branch -D $BRANCH_NAME || true
+            git fetch origin staging
+            git checkout -b $BRANCH_NAME origin/staging
+
+            cd gitops-repo/overlays/staging
+            
+            yq -i '
+              (.patches[] | select(.target.name == "go-db-app-version02") | .patch) 
+              |= sub("value: .*"; "value: anuroop21/go-app-circleci:latest")
+              ' kustomization.yaml
+
+            yq -i '
+              (.patches[] | select(.target.name == "go-app-route-canary-route") | .patch) 
+              |= sub("backendRefs/0/weight\n.*value: [0-9]+"; "backendRefs/0/weight\n        value: 90")
+              ' kustomization.yaml
+
+            yq -i '
+              (.patches[] | select(.target.name == "go-app-route-canary-route") | .patch) 
+              |= sub("backendRefs/1/weight\n.*value: [0-9]+"; "backendRefs/1/weight\n        value: 10")
+              ' kustomization.yaml
+            
+            git add kustomization.yaml
+            git commit -m "Promote to Staging: Referring to latest stable build"
+            git push -f origin $BRANCH_NAME
+            
+            curl -L -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              https://api.github.com/repos/anuroopps2001/go-db-application/pulls \
+              -d "{\"title\":\"🚀 Promote Dev to Staging: ${CIRCLE_SHA1:0:7}\", \"body\":\"Automated promotion.\", \"head\":\"$BRANCH_NAME\", \"base\":\"staging\"}"
+
+
+  
+
+workflows:
+  version: 2
+  build_and_deploy_dev:
+    jobs:
+      - build:
+          filters:
+            branches:
+              only: feature/circleci-metrics
+
+      - static-analysis:
+          filters:
+            branches:
+              only: feature/circleci-metrics
+
+      - docker-file-linting:
+          filters:
+            branches:
+              only: feature/circleci-metrics
+
+      - docker-build-and-push:
+          requires: [build, static-analysis, docker-file-linting]
+
+      - update_traffic:
+          name: dev_traffic_10
+          v1_weight: "90"
+          v2_weight: "10"
+          env: "dev"
+          requires: [docker-build-and-push]
+
+      - wait_for_rollout:
+          name: dev_wait_10
+          env: "dev"
+          requires: [dev_traffic_10]
+
+      - canary_check:
+          name: dev_check_10
+          v1_rollback_weight: "100"
+          v2_rollback_weight: "0"
+          prom_url: "https://go-app-prometheus-geacauf4ewaxgrd7.southindia.prometheus.monitor.azure.com"
+          requires: [dev_wait_10]
+      
+      - dev_approve_50:
+          type: approval
+          requires: [dev_check_10]
+
+      - update_traffic:
+          name: dev_traffic_50
+          v1_weight: "50"
+          v2_weight: "50"
+          env: "dev"
+          requires: [dev_approve_50]
+
+      - canary_check:
+          name: dev_check_50
+          v1_rollback_weight: "100"
+          v2_rollback_weight: "0"
+          prom_url: "https://go-app-prometheus-geacauf4ewaxgrd7.southindia.prometheus.monitor.azure.com"
+          requires: [dev_traffic_50]
+
+      - dev_approve_100:
+          type: approval
+          requires: [dev_check_50]
+
+      - update_traffic:
+          name: dev_traffic_100
+          v1_weight: "0"
+          v2_weight: "100"
+          requires: [dev_approve_100]
+
+      - dev_approve_promotion:  # This is the "Pause Button"
+          type: approval
+          requires: [dev_traffic_100]
+
+      - promote:
+          name: "promote_dev"
+          env: "dev"
+          branch: "feature/circleci-metrics"
+          requires: [dev_approve_promotion]
+
+      - approve_staging_pr:
+          type: approval
+          requires: [promote_dev]
+
+      - create_staging_pr:
+          requires: [approve_staging_pr]
+
+# --- STAGING WORKFLOW ---
+  build_and_deploy_staging:
+    jobs:
+      - update_traffic:
+          name: "staging_traffic_10"
+          env: "staging"
+          branch: "staging"
+          v1_weight: "90"
+          v2_weight: "10"
+          filters:
+            branches:
+              only:  # runs only when something changes in "staging" or promotion branches
+                - staging
+                - promote*
+
+      - wait_for_rollout:
+          name: "staging_wait_10"
+          env: "staging"
+          requires: [staging_traffic_10]
+
+      - canary_check:
+          name: staging_check_10
+          v1_rollback_weight: "100"
+          v2_rollback_weight: "0"
+          prom_url: "https://go-app-prometheus-geacauf4ewaxgrd7.southindia.prometheus.monitor.azure.com"
+          requires: [staging_wait_10]
+
+      - staging_approve_50:
+          type: approval
+          requires: [staging_check_10]
+
+      - update_traffic:
+          name: staging_traffic_50
+          v1_weight: "50"
+          v2_weight: "50"
+          env: "staging"
+          branch: "staging"
+          requires: [staging_approve_50]
+
+      - canary_check:
+          name: staging_check_50
+          v1_rollback_weight: "100"
+          v2_rollback_weight: "0"
+          branch: "staging"
+          prom_url: "https://go-app-prometheus-geacauf4ewaxgrd7.southindia.prometheus.monitor.azure.com"
+          requires: [staging_traffic_50]
+
+      - staging_approve_100:
+          type: approval
+          requires: [staging_check_50]
+
+      - update_traffic:
+          name: staging_traffic_100
+          v1_weight: "0"
+          v2_weight: "100"
+          env: "staging"
+          branch: "staging"
+          requires: [staging_approve_100]
+
+      - staging_approve_promotion:  # This is the "Pause Button"
+          type: approval
+          requires: [staging_traffic_100]
+
+      - promote:
+          name: "promote_staging"
+          env: "staging"
+          branch: "staging"
+          requires: [staging_approve_promotion]
+
+      
