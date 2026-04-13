@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -19,6 +20,18 @@ func (s *MuxServer) addUser(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&userData); err != nil {
 		http.Error(w, "invalid body", http.StatusBadRequest)
+		return
+	}
+
+	if userData.Name == "" || userData.Email == "" {
+
+		slog.Warn("invalid user input",
+			"request_id", getRequestID(r.Context()),
+			"name", userData.Name,
+			"email", userData.Email,
+		)
+
+		http.Error(w, "missing required fields", http.StatusBadRequest)
 		return
 	}
 
