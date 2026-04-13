@@ -63,7 +63,7 @@ jobs:
           command: hadolint --ignore DL3018 Docker/Dockerfile
 
   docker-build-and-push:
-    executor: azure_self_runner  # Because Azure keyvault was allowed to access only from the self hosted runner azure vnet subnets
+    executor: base  # Because Azure keyvault was allowed to access only from the self hosted runner azure vnet subnets
     working_directory: ~/project
     steps:
       - attach_workspace:
