@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload Profile Image</title>
+</head>
+<body>
+
+<h2>Upload Profile Image</h2>
+
+<label>User ID:</label>
+<input type="number" id="userId" placeholder="Enter user ID" />
+
+<br><br>
+
+<input type="file" id="fileInput" />
+
+<br><br>
+
+<button onclick="uploadFile()">Upload</button>
+
+<p id="result"></p>
+
+<script>
+async function uploadFile() {
+    const userId = document.getElementById("userId").value;
+    const fileInput = document.getElementById("fileInput").files[0];
+
+    if (!userId || !fileInput) {
+        alert("User ID and file required");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", fileInput);
+
+    try {
+        const response = await fetch(`http://go-db-app.internal.com/upload/${userId}`, {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await response.json();
+
+        document.getElementById("result").innerHTML =
+            "Uploaded! URL: <a href='" + data.url + "' target='_blank'>" + data.url + "</a>";
+
+    } catch (err) {
+        document.getElementById("result").innerText = "Upload failed";
+    }
+}
+</script>
+
+</body>
+</html>

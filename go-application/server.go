@@ -31,6 +31,9 @@ func NewServer(db Client, blob *BlobClient) Server {
 	}
 
 	server.routes()
+
+	server.gorilla.Use(corsMiddleware)
+
 	server.gorilla.Use(observabilityMiddleware)
 	return server
 }
@@ -103,4 +106,19 @@ func (s *MuxServer) Start() error {
 	slog.Info("server starting", "port", 8080)
 	log.Fatal(http.ListenAndServe(":8080", s.gorilla))
 	return nil
+}
+
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		if r.Method == "OPTIONS" {
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
