@@ -20,12 +20,14 @@ type Server interface {
 type MuxServer struct {
 	gorilla *mux.Router
 	Client
+	blob *BlobClient
 }
 
-func NewServer(db Client) Server {
+func NewServer(db Client, blob *BlobClient) Server {
 	server := &MuxServer{
 		mux.NewRouter(),
 		db,
+		blob,
 	}
 
 	server.routes()

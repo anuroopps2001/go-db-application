@@ -204,3 +204,32 @@ func (s *MuxServer) ready(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ready"))
 }
+
+func (s *MuxServer) uploadProfileImage(w http.ResponseWriter, r *http.Request) {
+
+	file, handler, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "invalid file", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	buffer := make([]byte, handler.Size)
+	_, err = file.Read(buffer)
+	if err != nil {
+		http.Error(w, "failed to read file", http.StatusInternalServerError)
+		return
+	}
+
+	fileName := handler.Filename
+
+	url, err := s.blob.Upload(r.Context(), fileName, buffer)
+	if err != nil {
+		http.Error(w, "upload failed", http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{
+		"url": url,
+	})
+}

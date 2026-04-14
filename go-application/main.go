@@ -25,7 +25,13 @@ func main() {
 		return
 	}
 
-	service := NewServer(db)
+	blobClient, err := NewBlobClient()
+	if err != nil {
+		slog.Error("blob init failed", "error", err.Error())
+		return
+	}
+
+	service := NewServer(db, blobClient)
 
 	slog.Info("starting server", "port", 8080)
 

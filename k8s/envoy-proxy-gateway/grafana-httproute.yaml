@@ -1,0 +1,16 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: grafana-route
+  namespace: monitoring
+spec:
+  parentRefs:
+  - name: internal-gateway
+    namespace: default # The namespace where your Gateway lives
+  hostnames:
+  - "grafana.internal.com"
+  rules:
+  - backendRefs:
+    - name: prometheus-grafana # Exact name of your Grafana service
+      namespace: monitoring
+      port: 80

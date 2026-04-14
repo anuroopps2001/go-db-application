@@ -1,0 +1,18 @@
+grafana:
+  enabled: true
+  # Add this to ensure the pod actually restarts when secrets change
+  envValueFrom:
+    GF_SMTP_PASSWORD:
+      secretKeyRef:
+        name: grafana-smtp-password
+        key: password
+
+  grafana.ini:
+    smtp:
+      enabled: true
+      host: smtp.gmail.com:587
+      user: anuroopps2001@gmail.com
+      from_address: anuroopps2001@gmail.com
+      from_name: Grafana Alerts
+      # Tell Grafana to use the Env Var we defined above
+      password: "$__env{GF_SMTP_PASSWORD}"
