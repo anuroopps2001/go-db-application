@@ -39,8 +39,7 @@ jobs:
     executor: go-executor
     working_directory: ~/project
     steps:
-      - attach_workspace: # <-- Add this back
-          at: ~/project
+      - checkout
       - run:
           name: Quality and Vulnerability Scan
           working_directory: go-application
@@ -56,26 +55,17 @@ jobs:
       - image: hadolint/hadolint:latest-debian
     working_directory: ~/project
     steps:
-      - attach_workspace:
-          at: ~/project    
+      - checkout 
       - run:
           name: Lint Dockerfile
           command: hadolint --ignore DL3018 Docker/Dockerfile
 
   docker-build-and-push:
-    executor: base  # Because Azure keyvault was allowed to access only from the self hosted runner azure vnet subnets
+    executor: azure_self_runner  # Because Azure keyvault was allowed to access only from the self hosted runner azure vnet subnets
     working_directory: ~/project
     steps:
       - attach_workspace:
           at: ~/project
-
-      - setup_remote_docker:
-          docker_layer_caching: true
-
-      - run:
-          name: Install AZ CLI
-          command: |
-            curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
       - run:
           name: Debug
@@ -346,15 +336,11 @@ workflows:
           filters:
             branches:
               only: feature/circleci-metrics
-          requires:
-            - build
 
       - docker-file-linting:
           filters:
             branches:
               only: feature/circleci-metrics
-          requires:
-            - build
 
       - docker-build-and-push:
           requires: [build, static-analysis, docker-file-linting]
