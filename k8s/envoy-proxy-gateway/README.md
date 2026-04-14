@@ -1,0 +1,1 @@
+**EnvoyProxy is the blueprint, and GatewayClass references it so that the controller can apply it when creating infrastructure for Gateways using that class.**

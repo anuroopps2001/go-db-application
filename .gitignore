@@ -27,3 +27,4 @@ github-token.token
 
 
 credential.json
+.env

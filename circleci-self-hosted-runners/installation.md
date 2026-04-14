@@ -132,3 +132,15 @@ $ az account show
   }
 }
 ```
+
+### Working command
+```bash
+az ad app federated-credential create \
+  --id c378042f-4d4f-4724-918b-9944ebbee106 \
+  --parameters '{
+    "name": "circleci-oidc-trust",
+    "issuer": "https://oidc.circleci.com/org/df943366-0e4d-4301-814a-796da580b6cc",
+    "subject": "org/df943366-0e4d-4301-814a-796da580b6cc/project/ee3b3e0e-a9b7-4abe-9d7a-7324ba24e786/user/58bd21dd-34fd-4dfa-be1b-f8909fae9137/vcs-origin/github.com/anuroopps2001/go-db-application/vcs-ref/refs/heads/feature/circleci-metrics",
+    "audiences": ["df943366-0e4d-4301-814a-796da580b6cc"]
+  }'
+```

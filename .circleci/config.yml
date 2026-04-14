@@ -89,8 +89,8 @@ jobs:
             # Login into Azure
             az login --service-principal -u "$AZURE_CLIENT_ID" -t "$AZURE_TENANT_ID" --federated-token "$CIRCLE_OIDC_TOKEN_V2"
 
-            DOCKERHUB_PASS=$(az keyvault secret show --name "DOCKERHUB-PASS" --vault-name "kv-aks-gitops-prod" --query value -o tsv)
-            DOCKERHUB_USER=$(az keyvault secret show --name "DOCKERHUB-USER" --vault-name "kv-aks-gitops-prod" --query value -o tsv)
+            DOCKERHUB_PASS=$(az keyvault secret show --name "DOCKERHUB-PASS" --vault-name "anuroop-kv-1q0c" --query value -o tsv)
+            DOCKERHUB_USER=$(az keyvault secret show --name "DOCKERHUB-USER" --vault-name "anuroop-kv-1q0c" --query value -o tsv)
 
             # Build with SHA for traceability
             docker build -f Docker/Dockerfile -t $DOCKERHUB_USER/go-app-circleci:${CIRCLE_SHA1} .
