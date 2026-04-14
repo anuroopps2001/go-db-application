@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 )
 
@@ -15,25 +16,23 @@ type BlobClient struct {
 }
 
 func NewBlobClient() (*BlobClient, error) {
+
 	account := os.Getenv("AZURE_STORAGE_ACCOUNT")
-
-	key := os.Getenv("AZURE_STORAGE_KEY")
-
 	container := os.Getenv("AZURE_STORAGE_CONTAINER")
 
-	if account == "" || key == "" || container == "" {
+	if account == "" || container == "" {
 		return nil, fmt.Errorf("missing blob env vars")
 	}
 
-	cred, err := azblob.NewSharedKeyCredential(account, key)
-
+	// 🔥 Workload Identity
+	cred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
 		return nil, err
 	}
 
 	url := fmt.Sprintf("https://%s.blob.core.windows.net/", account)
 
-	client, err := azblob.NewClientWithSharedKeyCredential(url, cred, nil)
+	client, err := azblob.NewClient(url, cred, nil)
 	if err != nil {
 		return nil, err
 	}
