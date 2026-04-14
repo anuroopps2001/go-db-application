@@ -1,6 +1,8 @@
 package main
 
 import (
+	"net/http"
+
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -13,6 +15,7 @@ func (s *MuxServer) routes() {
 	s.gorilla.HandleFunc("/user/{id}", s.updateUser).Methods("PUT")
 	s.gorilla.HandleFunc("/user/{id}", s.deleteUser).Methods("DELETE")
 	s.gorilla.HandleFunc("/upload/{id}", s.uploadProfileImage).Methods("POST")
+	s.gorilla.PathPrefix("/").Handler(http.FileServer(http.Dir("./")))
 
 	//prometheus endpoint
 	s.gorilla.Handle("/metrics", promhttp.Handler())
