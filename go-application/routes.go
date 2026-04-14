@@ -15,7 +15,7 @@ func (s *MuxServer) routes() {
 	s.gorilla.HandleFunc("/user/{id}", s.updateUser).Methods("PUT")
 	s.gorilla.HandleFunc("/user/{id}", s.deleteUser).Methods("DELETE")
 	s.gorilla.HandleFunc("/upload/{id}", s.uploadProfileImage).Methods("POST")
-	s.gorilla.PathPrefix("/ui/").Handler(http.StripPrefix("/ui/", http.FileServer(http.Dir("./"))))
+	s.gorilla.PathPrefix("/ui/").Handler(http.StripPrefix("/ui/", http.FileServer(http.Dir("/app"))))
 
 	//prometheus endpoint
 	s.gorilla.Handle("/metrics", promhttp.Handler())
