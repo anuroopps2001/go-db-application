@@ -205,8 +205,17 @@ func (s *MuxServer) ready(w http.ResponseWriter, _ *http.Request) {
 	w.Write([]byte("ready"))
 }
 
+// 🔥 UPDATED Upload API (Blob + DB integration)
 func (s *MuxServer) uploadProfileImage(w http.ResponseWriter, r *http.Request) {
 
+	// 1. Get user ID from URL
+	userId, err := strconv.Atoi(mux.Vars(r)["id"])
+	if err != nil {
+		http.Error(w, "invalid user id", http.StatusBadRequest)
+		return
+	}
+
+	// 2. Read file
 	file, handler, err := r.FormFile("file")
 	if err != nil {
 		http.Error(w, "invalid file", http.StatusBadRequest)
@@ -223,8 +232,8 @@ func (s *MuxServer) uploadProfileImage(w http.ResponseWriter, r *http.Request) {
 
 	fileName := handler.Filename
 
+	// 3. Upload to Blob
 	url, err := s.blob.Upload(r.Context(), fileName, buffer)
-
 	if err != nil {
 		slog.Error("blob upload failed",
 			"error", err.Error(),
@@ -234,7 +243,38 @@ func (s *MuxServer) uploadProfileImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]string{
-		"url": url,
+	slog.Info("blob upload success",
+		"file", fileName,
+		"url", url,
+	)
+
+	// 4. Fetch user
+	var user User
+	err = observeDBWithContext(r.Context(), "get_user", func() error {
+		return s.db.First(&user, userId).Error
+	})
+
+	if err != nil {
+		http.Error(w, "user not found", http.StatusNotFound)
+		return
+	}
+
+	// 5. Update user profile image
+	user.ProfileImage = url
+
+	err = observeDBWithContext(r.Context(), "update_user", func() error {
+		return s.db.Save(&user).Error
+	})
+
+	if err != nil {
+		http.Error(w, "failed to update user", http.StatusInternalServerError)
+		return
+	}
+
+	// 6. Response
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "image uploaded and user updated",
+		"user_id": userId,
+		"url":     url,
 	})
 }
