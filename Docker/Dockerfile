@@ -28,6 +28,8 @@ WORKDIR /app
 
 COPY --from=builder /app/app .
 
+COPY go-application/url /url
+
 # Check server.go for application listening port details
 EXPOSE 8080
 
