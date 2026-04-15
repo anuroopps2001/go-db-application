@@ -34,9 +34,9 @@ async function uploadFile() {
     formData.append("file", fileInput);
 
     try {
-        const response = await fetch(`http://go-db-app.internal.com/upload/${userId}`, {
-            method: "POST",
-            body: formData
+        const response = await fetch(`/upload/${userId}`, {
+             method: "POST",
+             body: formData
         });
 
         const data = await response.json();
