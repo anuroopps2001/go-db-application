@@ -1,0 +1,13 @@
+loki:
+  enabled: true
+  persistence:
+    enabled: true
+    size: 10Gi
+  config:
+    # This section turns on the "Janitor"
+    limits_config:
+      retention_period: 72h      # Keep logs for 3 days
+    compactor:
+      retention_enabled: true
+      working_directory: /data/loki/retention
+      shared_store: filesystem   # Critical since you use a PVC

@@ -15,3 +15,8 @@ spec:
     backendRefs:
     - name: go-db-service-sample # Your actual K8s Service (ClusterIP)
       port: 8080
+      timeouts:
+      request: 5s    # If backend takes >5s → Envoy returns error
+    retries:        # Request fails → Envoy retries → success (maybe)
+      attempts: 3
+      perTryTimeout: 2s  
