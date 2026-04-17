@@ -20,21 +20,23 @@ type Server interface {
 type MuxServer struct {
 	gorilla *mux.Router
 	Client
-	blob *BlobClient
+	blob     *BlobClient
+	producer *KafkaProducer // 👈 NEW
 }
 
-func NewServer(db Client, blob *BlobClient) Server {
+func NewServer(db Client, blob *BlobClient, producer *KafkaProducer) Server {
 	server := &MuxServer{
-		mux.NewRouter(),
-		db,
-		blob,
+		gorilla:  mux.NewRouter(),
+		Client:   db,
+		blob:     blob,
+		producer: producer, // 👈 NEW
 	}
 
 	server.routes()
 
 	server.gorilla.Use(corsMiddleware)
-
 	server.gorilla.Use(observabilityMiddleware)
+
 	return server
 }
 

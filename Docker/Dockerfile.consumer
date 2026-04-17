@@ -1,0 +1,25 @@
+FROM golang:1.24.11-alpine3.23 AS builder
+ENV CGO_ENABLED=0 \
+    GOOS=linux \
+    GOARCH=amd64
+
+WORKDIR /app
+
+COPY go-application/go.mod go-application/go.sum ./
+
+# download all the packages
+RUN go mod download 
+
+COPY go-application/ .
+
+RUN go build -o consumer ./cmd/consumer
+
+FROM alpine:3.21
+
+
+WORKDIR /app
+
+# copy the binary generated to workdir
+COPY --from=builder /app/consumer .  
+
+CMD [ "./consumer" ]

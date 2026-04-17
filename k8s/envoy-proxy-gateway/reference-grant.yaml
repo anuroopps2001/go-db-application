@@ -1,0 +1,14 @@
+# To allow httproute in default namespace to manage the services in monitoring namespace
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: allow-default-to-monitoring
+  namespace: monitoring
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: default
+  to:
+    - group: ""
+      kind: Service

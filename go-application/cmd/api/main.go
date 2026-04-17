@@ -8,7 +8,6 @@ import (
 
 func main() {
 
-	// 🔥 JSON logging (required for Loki)
 	handler := slog.NewJSONHandler(os.Stdout, nil)
 	logger := slog.New(handler)
 	slog.SetDefault(logger)
@@ -31,7 +30,10 @@ func main() {
 		return
 	}
 
-	service := NewServer(db, blobClient)
+	// ✅ NEW: Kafka Producer
+	producer := NewKafkaProducer()
+
+	service := NewServer(db, blobClient, producer)
 
 	slog.Info("starting server", "port", 8080)
 

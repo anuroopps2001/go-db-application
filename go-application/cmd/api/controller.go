@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"go-application/internal/events"
+
 	"github.com/gorilla/mux"
 )
 
@@ -42,6 +44,25 @@ func (s *MuxServer) addUser(w http.ResponseWriter, r *http.Request) {
 	err := observeDBWithContext(r.Context(), "create_user", func() error {
 		return s.db.Create(&user).Error
 	})
+
+	// ✅ Kafka event after success
+	if err == nil {
+
+		event := events.UserCreatedEvent{
+			Event:  "user_created",
+			UserID: user.ID,
+			Email:  user.Email,
+			Name:   user.Name,
+			Time:   time.Now(),
+		}
+
+		go func(ctx context.Context) {
+			err := s.producer.Publish(ctx, "user-events", event)
+			if err != nil {
+				slog.Error("failed to publish kafka event", "error", err)
+			}
+		}(r.Context())
+	}
 
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "unique") {

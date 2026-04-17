@@ -20,7 +20,7 @@ RUN go mod download
 # Copy the entire application source
 COPY go-application/ .
 
-RUN go build -o app
+RUN go build -o app ./cmd/api
 
 FROM alpine:3.21 
 
@@ -33,6 +33,7 @@ COPY go-application/url /url
 # Check server.go for application listening port details
 EXPOSE 8080
 
+# CMD = default command (can be overridden)
 CMD [ "./app" ]
 
 
