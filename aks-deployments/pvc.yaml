@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-shared-data
+spec:
+  accessModes:
+    - ReadWriteMany  # This allows multiple pods to use it
+  storageClassName: azurefile-csi-rwx
+  resources:
+    requests:
+      storage: 10Gi

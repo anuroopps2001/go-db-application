@@ -56,12 +56,12 @@ func (s *MuxServer) addUser(w http.ResponseWriter, r *http.Request) {
 			Time:   time.Now(),
 		}
 
-		go func(ctx context.Context) {
-			err := s.producer.Publish(ctx, "user-events", event)
+		go func() {
+			err := s.producer.Publish(context.Background(), "user-events", event)
 			if err != nil {
 				slog.Error("failed to publish kafka event", "error", err)
 			}
-		}(r.Context())
+		}()
 	}
 
 	if err != nil {

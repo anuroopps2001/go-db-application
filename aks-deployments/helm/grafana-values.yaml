@@ -1,0 +1,20 @@
+grafana:
+  persistence:
+    enabled: true
+    type: pvc
+    storageClassName: default
+    accessModes:
+      - ReadWriteOnce
+    size: 10Gi
+
+prometheus:
+  prometheusSpec:
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: default
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 50Gi

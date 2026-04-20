@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  annotations:
+    azure.workload.identity/client-id: bb4dc99e-8ee2-43c4-9ac5-1a64c16e16d9  # client ID of managedIdentity
+  creationTimestamp: "2026-04-10T08:21:15Z"
+  name: psql-auth-sa
+  namespace: default
+  resourceVersion: "574873"
+  uid: e1f4f21e-b75c-4b7d-b141-ba3a28c96199
