@@ -59,7 +59,7 @@ func (s *MuxServer) addUser(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		err := s.producer.Publish(ctx, event)
+		err := s.producer.Publish(ctx, "upload-events", event)
 		if err != nil {
 			slog.Error("kafka publish failed", "error", err)
 		}
@@ -222,16 +222,33 @@ func (s *MuxServer) uploadProfileImage(w http.ResponseWriter, r *http.Request) {
 		Time:     time.Now(),
 	}
 
-	go func() {
+	// ✅ FIXED: proper context + logging
+	go func(evt events.UploadEvent) {
+
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		err := s.producer.Publish(ctx, event)
-		if err != nil {
-			slog.Error("kafka publish failed", "error", err)
-		}
-	}()
+		slog.Info("publishing event",
+			"topic", "upload-events",
+			"user_id", evt.UserID,
+			"file_url", evt.FileURL,
+		)
 
+		err := s.producer.Publish(ctx, "upload-events", evt)
+		if err != nil {
+			slog.Error("kafka publish failed",
+				"error", err,
+				"user_id", evt.UserID,
+			)
+		} else {
+			slog.Info("kafka publish success",
+				"user_id", evt.UserID,
+			)
+		}
+
+	}(event)
+
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
 		"url": url,
 	})
