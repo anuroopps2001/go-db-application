@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -56,6 +57,11 @@ func observabilityMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 
+		// 🔥 filter noise here
+		if !shouldLog(r) {
+			return
+		}
+
 		duration := time.Since(start).Seconds()
 
 		slog.Info("http request",
@@ -66,6 +72,22 @@ func observabilityMiddleware(next http.Handler) http.Handler {
 			"user_agent", r.UserAgent(),
 		)
 	})
+}
+
+func shouldLog(r *http.Request) bool {
+	ua := r.UserAgent()
+	path := r.URL.Path
+
+	if strings.Contains(ua, "kube-probe") ||
+		strings.Contains(ua, "Prometheus") {
+		return false
+	}
+
+	if path == "/health" || path == "/ready" || path == "/metrics" {
+		return false
+	}
+
+	return true
 }
 
 func corsMiddleware(next http.Handler) http.Handler {

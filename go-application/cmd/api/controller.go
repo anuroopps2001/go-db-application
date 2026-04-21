@@ -211,7 +211,7 @@ func (s *MuxServer) uploadProfileImage(w http.ResponseWriter, r *http.Request) {
 
 	url, err := s.blob.Upload(r.Context(), fileName, buffer)
 	if err != nil {
-		http.Error(w, "upload failed", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 

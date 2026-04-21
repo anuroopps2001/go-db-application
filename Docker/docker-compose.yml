@@ -73,7 +73,14 @@ services:
       dockerfile: Docker/Dockerfile.consumer
     environment:
       - KAFKA_BROKER=kafka:9092
+      - DB_HOST=postgres-db
+      - DB_PASSWORD=mysecretpassword
+      - DB_USERNAME=postgres
+      - DB_NAME=mydb
+      - DB_PORT=5432
     depends_on:
+      postgres-db:
+        condition: service_healthy
       kafka:
         condition: service_started
 
