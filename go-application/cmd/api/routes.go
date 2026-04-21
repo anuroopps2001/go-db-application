@@ -8,22 +8,19 @@ import (
 
 func (s *MuxServer) routes() {
 
-	// Business logic
-	s.gorilla.HandleFunc("/user", s.addUser).Methods("POST")
-	s.gorilla.HandleFunc("/users", s.listUsers).Methods("GET")
-	s.gorilla.HandleFunc("/user/{id}", s.getUser).Methods("GET")
-	s.gorilla.HandleFunc("/user/{id}", s.updateUser).Methods("PUT")
-	s.gorilla.HandleFunc("/user/{id}", s.deleteUser).Methods("DELETE")
-	s.gorilla.HandleFunc("/upload/{id}", s.uploadProfileImage).Methods("POST")
-	s.gorilla.HandleFunc("/ui/upload/{id}", s.uploadProfileImage).Methods("POST")
-	s.gorilla.PathPrefix("/ui/").Handler(http.StripPrefix("/ui/", http.FileServer(http.Dir("/url"))))
+	s.router.HandleFunc("/user", s.addUser).Methods("POST")
+	s.router.HandleFunc("/users", s.listUsers).Methods("GET")
+	s.router.HandleFunc("/user/{id}", s.getUser).Methods("GET")
+	s.router.HandleFunc("/user/{id}", s.updateUser).Methods("PUT")
+	s.router.HandleFunc("/user/{id}", s.deleteUser).Methods("DELETE")
 
-	//prometheus endpoint
-	s.gorilla.Handle("/metrics", promhttp.Handler())
+	s.router.HandleFunc("/upload/{id}", s.uploadProfileImage).Methods("POST")
 
-	// /heathz endpoint for startup probe
-	s.gorilla.HandleFunc("/healthz", s.health).Methods("GET")
+	s.router.Handle("/metrics", promhttp.Handler())
 
-	// /ready endpoint to make sure app is able to connect to DB before accepting users requests
-	s.gorilla.HandleFunc("/ready", s.ready).Methods("GET")
+	s.router.HandleFunc("/healthz", s.health).Methods("GET")
+	s.router.HandleFunc("/ready", s.ready).Methods("GET")
+
+	s.router.PathPrefix("/ui/").
+		Handler(http.StripPrefix("/ui/", http.FileServer(http.Dir("/url"))))
 }

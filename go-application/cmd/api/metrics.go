@@ -87,6 +87,9 @@ func observeDBWithContext(ctx context.Context, operation string, fn func() error
 	dbQueriesTotal.WithLabelValues(operation).Inc()
 
 	reqID := getRequestID(ctx)
+	if reqID == "" {
+		reqID = "unknown"
+	}
 
 	if err != nil {
 		if isSystemError(err) {

@@ -1,9 +1,10 @@
-package main
+package blob
 
 import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
@@ -24,7 +25,6 @@ func NewBlobClient() (*BlobClient, error) {
 		return nil, fmt.Errorf("missing blob env vars")
 	}
 
-	// 🔥 Workload Identity
 	cred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
 		return nil, err
@@ -46,7 +46,19 @@ func NewBlobClient() (*BlobClient, error) {
 
 func (b *BlobClient) Upload(ctx context.Context, fileName string, data []byte) (string, error) {
 
-	_, err := b.client.UploadBuffer(ctx, b.container, fileName, data, nil)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	var err error
+
+	for i := 0; i < 3; i++ {
+		_, err = b.client.UploadBuffer(ctx, b.container, fileName, data, nil)
+		if err == nil {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+
 	if err != nil {
 		return "", err
 	}

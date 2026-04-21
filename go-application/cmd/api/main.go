@@ -1,6 +1,8 @@
 package main
 
 import (
+	"go-application/internal/blob"
+	"go-application/internal/db"
 	"log"
 	"log/slog"
 	"os"
@@ -12,30 +14,28 @@ func main() {
 	logger := slog.New(handler)
 	slog.SetDefault(logger)
 
-	db, err := NewDBClient()
+	db, err := db.NewDBClient()
 	if err != nil {
-		slog.Error("db init failed", "error", err.Error())
+		slog.Error("db init failed", "error", err)
 		return
 	}
 
-	err = db.RunMigration()
-	if err != nil {
-		slog.Error("migration failed", "error", err.Error())
+	if err := db.RunMigration(); err != nil {
+		slog.Error("migration failed", "error", err)
 		return
 	}
 
-	blobClient, err := NewBlobClient()
+	blobClient, err := blob.NewBlobClient()
 	if err != nil {
-		slog.Error("blob init failed", "error", err.Error())
+		slog.Error("blob init failed", "error", err)
 		return
 	}
 
-	// ✅ NEW: Kafka Producer
 	producer := NewKafkaProducer()
 
-	service := NewServer(db, blobClient, producer)
+	server := NewServer(db, blobClient, producer)
 
 	slog.Info("starting server", "port", 8080)
 
-	log.Fatal(service.Start())
+	log.Fatal(server.Start())
 }

@@ -1,10 +1,14 @@
 package main
 
-// This is an integration test and should be ran with
-// go test -tags=integration ./...
+// run with: go test -tags=integration ./...
+
 import (
+	"context"
 	"os"
 	"testing"
+	"time"
+
+	"go-application/internal/db"
 )
 
 func TestDBConnection(t *testing.T) {
@@ -17,14 +21,16 @@ func TestDBConnection(t *testing.T) {
 		t.Skip("Skipping DB integration test: DB env vars not set")
 	}
 
-	client, err := NewDBClient()
-
-	// t.Fatal("I was executed")
+	client, err := db.NewDBClient()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !client.Ready() {
+	// ✅ use context (matches your DB layer now)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	if !client.Ready(ctx) {
 		t.Fatal("database is not reachable")
 	}
 }

@@ -9,3 +9,10 @@ type UserCreatedEvent struct {
 	Name   string    `json:"name"`
 	Time   time.Time `json:"time"`
 }
+
+type UploadEvent struct {
+	UserID   int       `json:"user_id"`
+	FileName string    `json:"file_name"`
+	FileURL  string    `json:"file_url"` // ✅ FIXED
+	Time     time.Time `json:"time"`
+}

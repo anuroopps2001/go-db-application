@@ -3,22 +3,23 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"log/slog"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"go-application/internal/events"
+	"go-application/internal/models"
 
 	"github.com/gorilla/mux"
 )
 
-// Create User
+// CREATE USER
 func (s *MuxServer) addUser(w http.ResponseWriter, r *http.Request) {
 
-	var userData Userparam
-	var user User
+	var userData models.Userparam
+	var user models.User
 
 	if err := json.NewDecoder(r.Body).Decode(&userData); err != nil {
 		http.Error(w, "invalid body", http.StatusBadRequest)
@@ -26,13 +27,6 @@ func (s *MuxServer) addUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if userData.Name == "" || userData.Email == "" {
-
-		slog.Warn("invalid user input",
-			"request_id", getRequestID(r.Context()),
-			"name", userData.Name,
-			"email", userData.Email,
-		)
-
 		http.Error(w, "missing required fields", http.StatusBadRequest)
 		return
 	}
@@ -41,54 +35,36 @@ func (s *MuxServer) addUser(w http.ResponseWriter, r *http.Request) {
 	user.Email = userData.Email
 	user.Age = userData.Age
 
-	err := observeDBWithContext(r.Context(), "create_user", func() error {
-		return s.db.Create(&user).Error
-	})
-
-	// ✅ Kafka event after success
-	if err == nil {
-
-		event := events.UserCreatedEvent{
-			Event:  "user_created",
-			UserID: user.ID,
-			Email:  user.Email,
-			Name:   user.Name,
-			Time:   time.Now(),
-		}
-
-		go func() {
-			err := s.producer.Publish(context.Background(), "user-events", event)
-			if err != nil {
-				slog.Error("failed to publish kafka event", "error", err)
-			}
-		}()
-	}
-
-	if err != nil {
-		if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "unique") {
-			http.Error(w, "email already exists", http.StatusConflict)
+	// ✅ use abstraction (NOT s.Client.db)
+	if err := s.Client.Create(&user); err != nil {
+		if strings.Contains(err.Error(), "duplicate") {
+			http.Error(w, "email exists", http.StatusConflict)
 			return
 		}
 		http.Error(w, "db error", http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	event := events.UserCreatedEvent{
+		Event:  "user_created",
+		UserID: user.ID,
+		Email:  user.Email,
+		Name:   user.Name,
+		Time:   time.Now(),
+	}
 
+	go s.producer.Publish(r.Context(), "user-events", event)
+
+	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(user)
 }
 
-// List Users
+// LIST USERS
 func (s *MuxServer) listUsers(w http.ResponseWriter, r *http.Request) {
 
-	var users []User
+	var users []models.User
 
-	err := observeDBWithContext(r.Context(), "list_users", func() error {
-		return s.db.Find(&users).Error
-	})
-
-	if err != nil {
+	if err := s.Client.Find(&users); err != nil {
 		http.Error(w, "db error", http.StatusInternalServerError)
 		return
 	}
@@ -97,7 +73,7 @@ func (s *MuxServer) listUsers(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(users)
 }
 
-// Get User
+// GET USER
 func (s *MuxServer) getUser(w http.ResponseWriter, r *http.Request) {
 
 	userId, err := strconv.Atoi(mux.Vars(r)["id"])
@@ -106,30 +82,18 @@ func (s *MuxServer) getUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var user User
+	var user models.User
 
-	err = observeDBWithContext(r.Context(), "get_user", func() error {
-		return s.db.First(&user, userId).Error
-	})
-
-	if err != nil {
+	if err := s.Client.First(&user, userId); err != nil {
 		http.Error(w, "user not found", http.StatusNotFound)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(user)
 }
 
-// Update User
+// UPDATE USER
 func (s *MuxServer) updateUser(w http.ResponseWriter, r *http.Request) {
-
-	var userData Userparam
-
-	if err := json.NewDecoder(r.Body).Decode(&userData); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
-		return
-	}
 
 	userId, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
@@ -137,44 +101,37 @@ func (s *MuxServer) updateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var user User
-
-	err = observeDBWithContext(r.Context(), "get_user", func() error {
-		return s.db.First(&user, userId).Error
-	})
-
-	if err != nil {
+	var user models.User
+	if err := s.Client.First(&user, userId); err != nil {
 		http.Error(w, "user not found", http.StatusNotFound)
 		return
 	}
 
-	if userData.Name != "" {
-		user.Name = userData.Name
-	}
-	if userData.Email != "" {
-		user.Email = userData.Email
-	}
-	if userData.Age != 0 {
-		user.Age = userData.Age
-	}
-
-	err = observeDBWithContext(r.Context(), "update_user", func() error {
-		return s.db.Save(&user).Error
-	})
-
-	if err != nil {
-		http.Error(w, "failed to update user", http.StatusInternalServerError)
+	var input models.Userparam
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		http.Error(w, "invalid body", http.StatusBadRequest)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	if input.Name != "" {
+		user.Name = input.Name
+	}
+	if input.Email != "" {
+		user.Email = input.Email
+	}
+	if input.Age != 0 {
+		user.Age = input.Age
+	}
 
-	json.NewEncoder(w).Encode(map[string]string{
-		"message": "User updated successfully",
-	})
+	if err := s.Client.Save(&user); err != nil {
+		http.Error(w, "update failed", http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(user)
 }
 
-// Delete User
+// DELETE USER
 func (s *MuxServer) deleteUser(w http.ResponseWriter, r *http.Request) {
 
 	userId, err := strconv.Atoi(mux.Vars(r)["id"])
@@ -183,41 +140,29 @@ func (s *MuxServer) deleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = observeDBWithContext(r.Context(), "delete_user", func() error {
-		return s.db.Delete(&User{}, userId).Error
-	})
-
-	if err != nil {
-		http.Error(w, "failed to delete user", http.StatusInternalServerError)
+	if err := s.Client.Delete(&models.User{}, userId); err != nil {
+		http.Error(w, "delete failed", http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-
 	json.NewEncoder(w).Encode(map[string]string{
-		"message": "User deleted successfully",
+		"message": "user deleted",
 	})
 }
 
-// Health check
+// HEALTH CHECK (liveness)
 func (s *MuxServer) health(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }
 
-// Readiness check
-func (s *MuxServer) ready(w http.ResponseWriter, _ *http.Request) {
+// READINESS CHECK
+func (s *MuxServer) ready(w http.ResponseWriter, r *http.Request) {
 
-	sqlDB, err := s.db.DB()
-	if err != nil {
-		http.Error(w, "db handle error", http.StatusServiceUnavailable)
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 	defer cancel()
 
-	if err := sqlDB.PingContext(ctx); err != nil {
+	if !s.Client.Ready(ctx) {
 		http.Error(w, "db not ready", http.StatusServiceUnavailable)
 		return
 	}
@@ -226,17 +171,15 @@ func (s *MuxServer) ready(w http.ResponseWriter, _ *http.Request) {
 	w.Write([]byte("ready"))
 }
 
-// 🔥 UPDATED Upload API (Blob + DB integration)
+// UPLOAD IMAGE
 func (s *MuxServer) uploadProfileImage(w http.ResponseWriter, r *http.Request) {
 
-	// 1. Get user ID from URL
 	userId, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
 		http.Error(w, "invalid user id", http.StatusBadRequest)
 		return
 	}
 
-	// 2. Read file
 	file, handler, err := r.FormFile("file")
 	if err != nil {
 		http.Error(w, "invalid file", http.StatusBadRequest)
@@ -245,57 +188,33 @@ func (s *MuxServer) uploadProfileImage(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	buffer := make([]byte, handler.Size)
-	_, err = file.Read(buffer)
-	if err != nil {
-		http.Error(w, "failed to read file", http.StatusInternalServerError)
+	if _, err := file.Read(buffer); err != nil {
+		http.Error(w, "file read error", http.StatusInternalServerError)
 		return
 	}
 
-	fileName := handler.Filename
-
-	// 3. Upload to Blob
-	url, err := s.blob.Upload(r.Context(), fileName, buffer)
-	if err != nil {
-		slog.Error("blob upload failed",
-			"error", err.Error(),
-			"file", fileName,
-		)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	slog.Info("blob upload success",
-		"file", fileName,
-		"url", url,
+	fileName := fmt.Sprintf("user/%d/%d-%s",
+		userId,
+		time.Now().Unix(),
+		handler.Filename,
 	)
 
-	// 4. Fetch user
-	var user User
-	err = observeDBWithContext(r.Context(), "get_user", func() error {
-		return s.db.First(&user, userId).Error
-	})
-
+	url, err := s.blob.Upload(r.Context(), fileName, buffer)
 	if err != nil {
-		http.Error(w, "user not found", http.StatusNotFound)
+		http.Error(w, "upload failed", http.StatusInternalServerError)
 		return
 	}
 
-	// 5. Update user profile image
-	user.ProfileImage = url
-
-	err = observeDBWithContext(r.Context(), "update_user", func() error {
-		return s.db.Save(&user).Error
-	})
-
-	if err != nil {
-		http.Error(w, "failed to update user", http.StatusInternalServerError)
-		return
+	event := events.UploadEvent{
+		UserID:   userId,
+		FileName: fileName,
+		FileURL:  url,
+		Time:     time.Now(),
 	}
 
-	// 6. Response
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"message": "image uploaded and user updated",
-		"user_id": userId,
-		"url":     url,
+	go s.producer.Publish(r.Context(), "upload-events", event)
+
+	json.NewEncoder(w).Encode(map[string]string{
+		"url": url,
 	})
 }

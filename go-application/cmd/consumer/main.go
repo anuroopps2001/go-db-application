@@ -3,54 +3,55 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"log/slog"
-	"os" // Required to read environment variables
+	"os"
+	"time"
 
+	"go-application/internal/db"
 	"go-application/internal/events"
+	"go-application/internal/models"
 
 	"github.com/segmentio/kafka-go"
 )
 
 func main() {
-	// 1. Get the broker address from the environment variable 'KAFKA_BROKER'
-	// In your docker-compose, this is set to "kafka:9092"
-	broker := os.Getenv("KAFKA_BROKER")
-	if broker == "" {
-		// Fallback for local development outside of Docker
-		broker = "localhost:9092"
-	}
 
-	slog.Info("Starting consumer", "broker", broker)
+	broker := os.Getenv("KAFKA_BROKER")
 
 	reader := kafka.NewReader(kafka.ReaderConfig{
-		Brokers: []string{broker}, // Using the dynamic address
-		Topic:   "user-events",
-		GroupID: "user-group",
+		Brokers: []string{broker},
+		GroupID: "worker-group",
+		Topic:   "upload-events",
 	})
 
-	// It's good practice to close the reader when the function exits
-	defer reader.Close()
+	dbClient, _ := db.NewDBClient()
 
 	for {
 		msg, err := reader.ReadMessage(context.Background())
 		if err != nil {
-			log.Println("error reading message:", err)
 			continue
 		}
 
-		var event events.UserCreatedEvent
-
-		err = json.Unmarshal(msg.Value, &event)
-		if err != nil {
-			slog.Error("failed to parse event", "error", err)
+		var event events.UploadEvent
+		if err := json.Unmarshal(msg.Value, &event); err != nil {
 			continue
 		}
 
-		slog.Info("user event received",
+		// ✅ update DB only
+		var user models.User
+		if err := dbClient.First(&user, event.UserID); err != nil {
+			continue
+		}
+
+		user.ProfileImage = event.FileURL
+
+		_, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		dbClient.Save(&user)
+		cancel()
+
+		slog.Info("profile updated",
 			"user_id", event.UserID,
-			"email", event.Email,
-			"name", event.Name,
+			"url", event.FileURL,
 		)
 	}
 }

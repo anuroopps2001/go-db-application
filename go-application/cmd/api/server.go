@@ -2,112 +2,70 @@ package main
 
 import (
 	"context"
-	"log"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+
+	blobpkg "go-application/internal/blob"
+	dbpkg "go-application/internal/db"
 )
 
 type Server interface {
 	Start() error
-	routes()
 }
 
 type MuxServer struct {
-	gorilla *mux.Router
-	Client
-	blob     *BlobClient
-	producer *KafkaProducer // 👈 NEW
+	router   *mux.Router
+	Client   dbpkg.Client        // ✅ FIX
+	blob     *blobpkg.BlobClient // ✅ FIX
+	producer *KafkaProducer
 }
 
-func NewServer(db Client, blob *BlobClient, producer *KafkaProducer) Server {
-	server := &MuxServer{
-		gorilla:  mux.NewRouter(),
-		Client:   db,
-		blob:     blob,
-		producer: producer, // 👈 NEW
+func NewServer(dbClient dbpkg.Client, blobClient *blobpkg.BlobClient, producer *KafkaProducer) Server {
+	s := &MuxServer{
+		router:   mux.NewRouter(),
+		Client:   dbClient,
+		blob:     blobClient,
+		producer: producer,
 	}
 
-	server.routes()
+	s.routes()
 
-	server.gorilla.Use(corsMiddleware)
-	server.gorilla.Use(observabilityMiddleware)
+	s.router.Use(corsMiddleware)
+	s.router.Use(observabilityMiddleware)
 
-	return server
+	return s
 }
 
-type statusRecorder struct {
-	http.ResponseWriter
-	status int
-}
-
-func (r *statusRecorder) WriteHeader(code int) {
-	r.status = code
-	r.ResponseWriter.WriteHeader(code)
+func (s *MuxServer) Start() error {
+	slog.Info("server starting", "port", 8080)
+	return http.ListenAndServe(":8080", s.router)
 }
 
 func observabilityMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		// 🔥 filter noisy endpoints
-		if r.URL.Path == "/healthz" || r.URL.Path == "/ready" || r.URL.Path == "/metrics" {
-			next.ServeHTTP(w, r)
-			return
-		}
-
 		requestID := uuid.New().String()
-
-		// 🔥 propagate request_id via context
 		ctx := context.WithValue(r.Context(), requestIDKey, requestID)
 		r = r.WithContext(ctx)
 
-		rec := &statusRecorder{ResponseWriter: w, status: 200}
 		start := time.Now()
 
-		next.ServeHTTP(rec, r)
+		next.ServeHTTP(w, r)
 
 		duration := time.Since(start).Seconds()
 
-		// Metrics
-		httpRequestsTotal.WithLabelValues(
-			r.Method,
-			r.URL.Path,
-			strconv.Itoa(rec.status),
-		).Inc()
-
-		httpRequestDuration.WithLabelValues(
-			r.Method,
-			r.URL.Path,
-		).Observe(duration)
-
-		// Logs
 		slog.Info("http request",
 			"request_id", requestID,
 			"method", r.Method,
 			"path", r.URL.Path,
-			"status", rec.status,
-			"duration_seconds", duration,
+			"duration", duration,
 			"user_agent", r.UserAgent(),
-			"remote_addr", r.RemoteAddr,
 		)
 	})
-}
-
-func getRequestID(ctx context.Context) string {
-	if v, ok := ctx.Value(requestIDKey).(string); ok {
-		return v
-	}
-	return ""
-}
-
-func (s *MuxServer) Start() error {
-	slog.Info("server starting", "port", 8080)
-	log.Fatal(http.ListenAndServe(":8080", s.gorilla))
-	return nil
 }
 
 func corsMiddleware(next http.Handler) http.Handler {
