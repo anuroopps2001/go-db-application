@@ -59,7 +59,7 @@ func (s *MuxServer) addUser(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		err := s.producer.Publish(ctx, "user-events", event)
+		err := s.producer.Publish(ctx, event)
 		if err != nil {
 			slog.Error("kafka publish failed", "error", err)
 		}
@@ -226,7 +226,7 @@ func (s *MuxServer) uploadProfileImage(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		err := s.producer.Publish(ctx, "upload-events", event)
+		err := s.producer.Publish(ctx, event)
 		if err != nil {
 			slog.Error("kafka publish failed", "error", err)
 		}
