@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -196,8 +197,8 @@ func (s *MuxServer) uploadProfileImage(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	buffer := make([]byte, handler.Size)
-	if _, err := file.Read(buffer); err != nil {
+	buffer, err := io.ReadAll(file)
+	if err != nil {
 		http.Error(w, "file read error", http.StatusInternalServerError)
 		return
 	}
