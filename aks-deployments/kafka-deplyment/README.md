@@ -1,3 +1,16 @@
+```bash
+Client
+  ↓
+API
+  ├── Upload file to Blob ✔
+  └── Publish Kafka event (with URL) ✔
+        ↓
+      Kafka
+        ↓
+Consumer
+  └── Update DB with file URL ✔
+```
+
 ### Install Strimzi
 
 $ kubectl create namespace kafka

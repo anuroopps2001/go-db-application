@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-consumer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: go-consumer
+  template:
+    metadata:
+      labels:
+        app: go-consumer
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: psql-auth-sa
+
+      containers:
+      - name: consumer
+        image: anuroop21/go-consumer:v2
+
+        env:
+        - name: KAFKA_BROKER
+          value: my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092
+
+        - name: AZURE_STORAGE_ACCOUNT
+          value: anuroopstorageaccountz0x
+
+        - name: AZURE_STORAGE_CONTAINER
+          value: go-app-uploads
+
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: db-creds-k8s
+              key: DB_HOST
+
+        - name: DB_PORT
+          value: "5432"
+
+        - name: DB_SERVER
+          value: anuroop-psql-flex
+
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              name: db-creds-k8s
+              key: DB_NAME
+
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: db-creds-k8s
+              key: DB_USERNAME
+
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-creds-k8s
+              key: DB_PASSWORD
+
+        volumeMounts:
+        - name: secrets-store-inline
+          mountPath: "/mnt/secrets-store"
+          readOnly: true
+
+        - name: shared-storage
+          mountPath: /data/shared
+
+        resources:
+          requests:
+            cpu: 50m
+            memory: 50Mi
+          limits:
+            cpu: 100m
+            memory: 100Mi
+
+      volumes:
+      - name: secrets-store-inline
+        csi:
+          driver: secrets-store.csi.k8s.io
+          readOnly: true
+          volumeAttributes:
+            secretProviderClass: "go-app-kv-secrets"
+
+      - name: shared-storage
+        persistentVolumeClaim:
+          claimName: my-shared-data
