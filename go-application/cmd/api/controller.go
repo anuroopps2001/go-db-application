@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -36,7 +37,7 @@ func (s *MuxServer) addUser(w http.ResponseWriter, r *http.Request) {
 	user.Age = userData.Age
 
 	// ✅ use abstraction (NOT s.Client.db)
-	if err := s.Client.Create(&user); err != nil {
+	if err := s.Client.Create(r.Context(), &user); err != nil {
 		if strings.Contains(err.Error(), "duplicate") {
 			http.Error(w, "email exists", http.StatusConflict)
 			return
@@ -53,7 +54,15 @@ func (s *MuxServer) addUser(w http.ResponseWriter, r *http.Request) {
 		Time:   time.Now(),
 	}
 
-	go s.producer.Publish(r.Context(), "user-events", event)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		err := s.producer.Publish(ctx, "user-events", event)
+		if err != nil {
+			slog.Error("kafka publish failed", "error", err)
+		}
+	}()
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(user)
@@ -64,7 +73,7 @@ func (s *MuxServer) listUsers(w http.ResponseWriter, r *http.Request) {
 
 	var users []models.User
 
-	if err := s.Client.Find(&users); err != nil {
+	if err := s.Client.Find(r.Context(), &users); err != nil {
 		http.Error(w, "db error", http.StatusInternalServerError)
 		return
 	}
@@ -84,7 +93,7 @@ func (s *MuxServer) getUser(w http.ResponseWriter, r *http.Request) {
 
 	var user models.User
 
-	if err := s.Client.First(&user, userId); err != nil {
+	if err := s.Client.First(r.Context(), &user, userId); err != nil {
 		http.Error(w, "user not found", http.StatusNotFound)
 		return
 	}
@@ -102,7 +111,7 @@ func (s *MuxServer) updateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var user models.User
-	if err := s.Client.First(&user, userId); err != nil {
+	if err := s.Client.First(r.Context(), &user, userId); err != nil {
 		http.Error(w, "user not found", http.StatusNotFound)
 		return
 	}
@@ -123,7 +132,7 @@ func (s *MuxServer) updateUser(w http.ResponseWriter, r *http.Request) {
 		user.Age = input.Age
 	}
 
-	if err := s.Client.Save(&user); err != nil {
+	if err := s.Client.Save(r.Context(), &user); err != nil {
 		http.Error(w, "update failed", http.StatusInternalServerError)
 		return
 	}
@@ -140,7 +149,7 @@ func (s *MuxServer) deleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.Client.Delete(&models.User{}, userId); err != nil {
+	if err := s.Client.Delete(r.Context(), &models.User{}, userId); err != nil {
 		http.Error(w, "delete failed", http.StatusInternalServerError)
 		return
 	}
@@ -212,7 +221,15 @@ func (s *MuxServer) uploadProfileImage(w http.ResponseWriter, r *http.Request) {
 		Time:     time.Now(),
 	}
 
-	go s.producer.Publish(r.Context(), "upload-events", event)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		err := s.producer.Publish(ctx, "upload-events", event)
+		if err != nil {
+			slog.Error("kafka publish failed", "error", err)
+		}
+	}()
 
 	json.NewEncoder(w).Encode(map[string]string{
 		"url": url,

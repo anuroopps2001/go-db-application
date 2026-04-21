@@ -34,24 +34,24 @@ func (c Client) RunMigration() error {
 	return c.db.AutoMigrate(&models.User{})
 }
 
-func (c Client) Create(value interface{}) error {
-	return c.db.Create(value).Error
+func (c Client) First(ctx context.Context, dest interface{}, id int) error {
+	return c.db.WithContext(ctx).First(dest, id).Error
 }
 
-func (c Client) Find(dest interface{}) error {
-	return c.db.Find(dest).Error
+func (c Client) Save(ctx context.Context, value interface{}) error {
+	return c.db.WithContext(ctx).Save(value).Error
 }
 
-func (c Client) Delete(value interface{}, id int) error {
-	return c.db.Delete(value, id).Error
+func (c Client) Find(ctx context.Context, dest interface{}) error {
+	return c.db.WithContext(ctx).Find(dest).Error
 }
 
-func (c Client) First(dest interface{}, id int) error {
-	return c.db.First(dest, id).Error
+func (c Client) Delete(ctx context.Context, value interface{}, id int) error {
+	return c.db.WithContext(ctx).Delete(value, id).Error
 }
 
-func (c Client) Save(value interface{}) error {
-	return c.db.Save(value).Error
+func (c Client) Create(ctx context.Context, value interface{}) error {
+	return c.db.WithContext(ctx).Create(value).Error
 }
 
 func NewDBClient() (Client, error) {
