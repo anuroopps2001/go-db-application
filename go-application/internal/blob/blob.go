@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
@@ -55,6 +56,10 @@ func (b *BlobClient) Upload(ctx context.Context, fileName string, data []byte) (
 		_, err = b.client.UploadBuffer(ctx, b.container, fileName, data, nil)
 		if err == nil {
 			break
+		}
+
+		if strings.Contains(err.Error(), "ContainerNotFound") {
+			return "", fmt.Errorf("container %s does not exist", b.container)
 		}
 		time.Sleep(1 * time.Second)
 	}
